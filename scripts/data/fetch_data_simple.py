@@ -38,7 +38,7 @@ def fetch_ticker(ticker, dm):
         dm.update_daily_data()
         print(f"Fetching {ticker} minute data...")
         dm.update_intraday_data()
-        print(f"✓ {ticker} complete")
+        print(f"OK {ticker} complete")
     finally:
         dm.ticker = original_ticker
         dm.ticker_dir = original_ticker_dir

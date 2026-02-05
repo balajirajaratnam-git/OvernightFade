@@ -63,7 +63,7 @@ def fetch_ticker_data(ticker, dm, description=""):
         console.print(f"[cyan]Step 2/2: Fetching {ticker} minute data (10 years)...[/cyan]")
         dm.update_intraday_data()
 
-        console.print(f"[bold green]✓ {ticker} data fetch complete![/bold green]")
+        console.print(f"[bold green]OK {ticker} data fetch complete![/bold green]")
 
     finally:
         # Restore original ticker
@@ -137,7 +137,7 @@ def main():
 
     # Summary
     console.print(f"\n[bold magenta]{'='*80}[/bold magenta]")
-    console.print(f"[bold green]✓ MULTI-TICKER DATA FETCH COMPLETE![/bold green]")
+    console.print(f"[bold green]OK MULTI-TICKER DATA FETCH COMPLETE![/bold green]")
     console.print(f"[bold magenta]{'='*80}[/bold magenta]")
 
     console.print(f"\n[cyan]Fetched data for:[/cyan]")

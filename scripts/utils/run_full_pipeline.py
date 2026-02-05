@@ -38,7 +38,7 @@ def wait_for_ticker(ticker, timeout_minutes=30):
 
     while time.time() - start_time < timeout_seconds:
         if check_ticker_complete(ticker):
-            print(f"✓ {ticker} complete!")
+            print(f"OK {ticker} complete!")
             return True
         time.sleep(10)  # Check every 10 seconds
 
@@ -57,7 +57,7 @@ def fetch_ticker(ticker):
     )
 
     if result.returncode == 0:
-        print(f"✓ {ticker} fetch complete")
+        print(f"OK {ticker} fetch complete")
     else:
         print(f"ERROR fetching {ticker}:")
         print(result.stderr)
@@ -102,7 +102,7 @@ def main():
 
     # Check SPY
     if check_ticker_complete("SPY"):
-        print("✓ SPY already complete")
+        print("OK SPY already complete")
     else:
         print("WARNING: SPY not complete")
 
@@ -123,7 +123,7 @@ def main():
     all_ready = all(check_ticker_complete(t) for t in main_tickers)
 
     if all_ready:
-        print_header("✓ ALL MAIN TICKERS COMPLETE")
+        print_header("OK ALL MAIN TICKERS COMPLETE")
         for ticker in main_tickers:
             intraday_dir = f"data/{ticker}/intraday"
             count = len([f for f in os.listdir(intraday_dir) if f.endswith(".parquet")])
@@ -172,12 +172,12 @@ def main():
     print(f"Total time: {total_time/60:.1f} minutes")
     print(f"Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-    print("\n✓ Data fetched:")
+    print("\nOK Data fetched:")
     print("  - 4 main tickers (SPY, QQQ, IWM, DIA)")
     print("  - VIX (volatility index)")
     print("  - 9 sector ETFs")
 
-    print("\n✓ Backtests complete:")
+    print("\nOK Backtests complete:")
     print("  - Results in: results/trade_log_MULTI_TICKER_10year.csv")
     print("  - Individual tickers: results/trade_log_{TICKER}_10year.csv")
 

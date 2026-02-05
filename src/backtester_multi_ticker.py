@@ -49,13 +49,26 @@ def run_ticker_backtest(ticker, config):
     console.print(f"[bold cyan]{'='*80}[/bold cyan]")
 
     try:
-        # Create temporary config for this ticker
-        ticker_config = config.copy()
-        ticker_config["ticker"] = ticker
+        # Save original config
+        config_path = os.path.join("config", "config.json")
+        with open(config_path, 'r') as f:
+            original_config = json.load(f)
 
-        # Run backtester
-        bt = Backtester(ticker=ticker)
-        results = bt.run()
+        # Temporarily update config for this ticker
+        temp_config = original_config.copy()
+        temp_config["ticker"] = ticker
+
+        with open(config_path, 'w') as f:
+            json.dump(temp_config, f, indent=2)
+
+        try:
+            # Run backtester (reads ticker from config.json)
+            bt = Backtester()
+            results = bt.run()
+        finally:
+            # Restore original config
+            with open(config_path, 'w') as f:
+                json.dump(original_config, f, indent=2)
 
         if results is None or results.empty:
             console.print(f"[yellow]No results for {ticker}[/yellow]")
@@ -81,7 +94,7 @@ def run_ticker_backtest(ticker, config):
             "avg_pnl": avg_pnl,
         }
 
-        console.print(f"[green]✓ {ticker}: {total_trades} trades, {win_rate:.1f}% win rate, ${total_pnl:,.2f} P/L[/green]")
+        console.print(f"[green]OK {ticker}: {total_trades} trades, {win_rate:.1f}% win rate, ${total_pnl:,.2f} P/L[/green]")
 
         # Save individual ticker results
         output_file = f"results/trade_log_{ticker}_10year.csv"
@@ -232,7 +245,7 @@ def main():
         # Save combined results
         output_file = "results/trade_log_MULTI_TICKER_10year.csv"
         combined_df.to_csv(output_file, index=False)
-        console.print(f"[green]✓ Combined results saved to: {output_file}[/green]")
+        console.print(f"[green]OK Combined results saved to: {output_file}[/green]")
 
         # Display summary
         console.print(f"\n")
@@ -248,7 +261,7 @@ def main():
             console.print(f"  [bold green]Improvement: {improvement*100:+.1f}% P/L increase[/bold green]")
             console.print(f"  [bold green]Trade count: {portfolio_stats['trades']/328:.1f}x more trades[/bold green]")
 
-        console.print(f"\n[bold green]✓ Multi-ticker backtest complete![/bold green]")
+        console.print(f"\n[bold green]OK Multi-ticker backtest complete![/bold green]")
         console.print(f"\n[yellow]Next steps:[/yellow]")
         console.print(f"  1. Analyze results: results/trade_log_MULTI_TICKER_10year.csv")
         console.print(f"  2. Review individual tickers: results/trade_log_{{TICKER}}_10year.csv")

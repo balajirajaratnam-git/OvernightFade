@@ -40,7 +40,7 @@ def check_ticker_data(ticker):
         "intraday_files": 0,
         "intraday_start": None,
         "intraday_end": None,
-        "status": "✗"
+        "status": "X"
     }
 
     # Check daily data
@@ -67,11 +67,11 @@ def check_ticker_data(ticker):
 
     # Determine status
     if stats["daily_exists"] and stats["daily_days"] > 2000 and stats["intraday_files"] > 2000:
-        stats["status"] = "✓ Complete"
+        stats["status"] = "OK Complete"
     elif stats["daily_exists"] and stats["daily_days"] > 1000:
-        stats["status"] = "⚠ Partial"
+        stats["status"] = "! Partial"
     else:
-        stats["status"] = "✗ Missing"
+        stats["status"] = "X Missing"
 
     return stats
 
@@ -124,9 +124,9 @@ def main():
             intraday_range = "N/A"
 
         # Status color
-        if "✓" in stat["status"]:
+        if "OK" in stat["status"]:
             status_style = "bold green"
-        elif "⚠" in stat["status"]:
+        elif "!" in stat["status"]:
             status_style = "bold yellow"
         else:
             status_style = "bold red"
@@ -143,14 +143,14 @@ def main():
     console.print(table)
 
     # Summary
-    complete = sum(1 for r in results if "✓" in r["status"])
-    partial = sum(1 for r in results if "⚠" in r["status"])
-    missing = sum(1 for r in results if "✗" in r["status"])
+    complete = sum(1 for r in results if "OK" in r["status"])
+    partial = sum(1 for r in results if "!" in r["status"])
+    missing = sum(1 for r in results if "X" in r["status"])
 
     console.print(f"\n[bold]Summary:[/bold]")
-    console.print(f"  [green]✓ Complete: {complete}[/green]")
-    console.print(f"  [yellow]⚠ Partial:  {partial}[/yellow]")
-    console.print(f"  [red]✗ Missing:  {missing}[/red]")
+    console.print(f"  [green]OK Complete: {complete}[/green]")
+    console.print(f"  [yellow]! Partial:  {partial}[/yellow]")
+    console.print(f"  [red]X Missing:  {missing}[/red]")
 
     # Recommendations
     console.print(f"\n[bold cyan]Expected for 10-year data (2015-2026):[/bold cyan]")
@@ -158,14 +158,14 @@ def main():
     console.print(f"  • Intraday: ~2,500 files")
 
     if complete == len(all_tickers):
-        console.print(f"\n[bold green]✓ All data ready for backtesting![/bold green]")
+        console.print(f"\n[bold green]OK All data ready for backtesting![/bold green]")
         console.print(f"\n[yellow]Next step:[/yellow]")
         console.print(f"  python src/backtester_multi_ticker.py")
     elif partial > 0:
-        console.print(f"\n[yellow]⚠ Some tickers have partial data.[/yellow]")
+        console.print(f"\n[yellow]! Some tickers have partial data.[/yellow]")
         console.print(f"[yellow]You can still backtest, but results may be limited.[/yellow]")
     else:
-        console.print(f"\n[red]✗ Data fetch incomplete. Re-run:[/red]")
+        console.print(f"\n[red]X Data fetch incomplete. Re-run:[/red]")
         console.print(f"  python fetch_multi_ticker_data.py")
 
 if __name__ == "__main__":
