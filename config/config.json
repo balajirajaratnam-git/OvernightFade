@@ -1,0 +1,38 @@
+{
+  "ticker": "SPY",
+  "tickers": [
+    "SPY"
+  ],
+  "lookback_years": 10,
+  "premium_budget": 100,
+  "default_take_profit_atr": 0.1,
+  "rate_limit_seconds": 14,
+  "max_requests_per_run": 10000,
+  "max_requests_per_minute": 90,
+  "spx_value": null,
+  "spx_ratio": null,
+  "filters": {
+    "exclude_fridays": true,
+    "exclude_flat_days": true,
+    "enable_fade_green": true,
+    "enable_fade_red": true
+  },
+  "directories": {
+    "data": "data",
+    "logs": "logs",
+    "results": "results"
+  },
+  "vix_ticker": "VIX",
+  "sector_etfs": [
+    "XLK",
+    "XLF",
+    "XLE",
+    "XLV",
+    "XLY",
+    "XLU",
+    "XLRE",
+    "XLI",
+    "XLB"
+  ],
+  "multi_ticker_enabled": true
+}

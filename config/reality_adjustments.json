@@ -1,0 +1,88 @@
+{
+  "version": "1.0",
+  "description": "Reality adjustment factors derived from Black-Scholes modeling and paper trading calibration",
+  "last_updated": "2026-02-05",
+  "data_source": "Initial estimates from measure_reality_framework.py (NOT yet calibrated with real paper trading)",
+
+  "spread_costs": {
+    "comment": "Bid/ask spread as percentage of mid price (measured at 16:00 ET)",
+    "SPY": 0.03,
+    "QQQ": 0.05,
+    "IWM": 0.10,
+    "DIA": 0.15
+  },
+
+  "slippage_pct": {
+    "comment": "Average slippage beyond mid price as percentage",
+    "SPY": 0.008,
+    "QQQ": 0.015,
+    "IWM": 0.023,
+    "DIA": 0.031
+  },
+
+  "commission_per_contract": 0.65,
+
+  "pnl_adjustments": {
+    "comment": "Adjustment multipliers for backtest P&L assumptions by expiry type and ticker",
+    "note": "Backtest assumes +45% on wins. Reality = +45% * adjustment_factor - spread - slippage - commission",
+
+    "1_day": {
+      "comment": "1-day expiries: Tue->Wed, Thu->Fri",
+      "SPY": 0.72,
+      "QQQ": 0.58,
+      "IWM": 0.28,
+      "DIA": 0.12
+    },
+
+    "2_day": {
+      "comment": "2-day expiries: Mon->Wed, Wed->Fri",
+      "SPY": 0.65,
+      "QQQ": 0.51,
+      "IWM": 0.24,
+      "DIA": 0.09
+    },
+
+    "3_day": {
+      "comment": "3-day expiries: Fri->Mon",
+      "SPY": 0.58,
+      "QQQ": 0.45,
+      "IWM": 0.20,
+      "DIA": 0.06
+    }
+  },
+
+  "win_rate_adjustments": {
+    "comment": "Expected win rate degradation from backtest to reality",
+    "overall": -0.03,
+    "by_ticker": {
+      "SPY": -0.02,
+      "QQQ": -0.03,
+      "IWM": -0.05,
+      "DIA": -0.06
+    }
+  },
+
+  "theta_decay_daily": {
+    "comment": "Daily theta decay as percentage of option value",
+    "1_day": 0.08,
+    "2_day": 0.06,
+    "3_day": 0.05
+  },
+
+  "recommendations": {
+    "trade_only": ["SPY", "QQQ"],
+    "avoid": ["IWM", "DIA"],
+    "reason_avoid": "Spread costs too high (10-15%), adjustment factors too low (0.09-0.24x)",
+    "expected_cagr_spy_only": "40-50%",
+    "expected_cagr_spy_qqq": "45-55%",
+    "backtest_cagr_all_tickers": "64.8%"
+  },
+
+  "calibration_status": {
+    "is_calibrated": false,
+    "paper_trades_completed": 0,
+    "weeks_of_data": 0,
+    "next_calibration": "After 20-30 paper trades (3-4 weeks)",
+    "calibration_guide": "See REALITY_CALIBRATION_GUIDE.md for full process"
+  }
+}

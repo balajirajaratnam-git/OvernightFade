@@ -1,0 +1,69 @@
+================================================================================
+MULTI-TICKER BACKTEST - 10 YEARS
+================================================================================
+
+Backtesting: SPY, QQQ, IWM, DIA
+Time period: 2015-2026 (10 years)
+
+
+================================================================================
+Running backtest for SPY
+================================================================================
+SPY: 1671 trades, 88.0% win rate, $45,195.00 P/L
+Saved to: results/trade_log_SPY_10year.csv
+
+================================================================================
+Running backtest for QQQ
+================================================================================
+QQQ: 1786 trades, 85.3% win rate, $41,070.00 P/L
+Saved to: results/trade_log_QQQ_10year.csv
+
+================================================================================
+Running backtest for IWM
+================================================================================
+IWM: 1823 trades, 86.0% win rate, $43,635.00 P/L
+Saved to: results/trade_log_IWM_10year.csv
+
+================================================================================
+Running backtest for DIA
+================================================================================
+DIA: 1680 trades, 83.5% win rate, $34,050.00 P/L
+Saved to: results/trade_log_DIA_10year.csv
+Traceback (most recent call last):
+  File "C:\Users\balaj\OneDrive\Trading\OvernightFade\run_backtest_simple.py", line 139, in <module>
+    success = main()
+  File "C:\Users\balaj\OneDrive\Trading\OvernightFade\run_backtest_simple.py", line 103, in main
+    combined.to_csv(output_file, index=False)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\pandas\util\_decorators.py", line 333, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\pandas\core\generic.py", line 3989, in to_csv
+    return DataFrameRenderer(formatter).to_csv(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        path_or_buf,
+        ^^^^^^^^^^^^
+    ...<14 lines>...
+        storage_options=storage_options,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\pandas\io\formats\format.py", line 1014, in to_csv
+    csv_formatter.save()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\pandas\io\formats\csvs.py", line 251, in save
+    with get_handle(
+         ~~~~~~~~~~^
+        self.filepath_or_buffer,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        storage_options=self.storage_options,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ) as handles:
+    ^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\pandas\io\common.py", line 873, in get_handle
+    handle = open(
+        handle,
+    ...<3 lines>...
+        newline="",
+    )
+PermissionError: [Errno 13] Permission denied: 'results/trade_log_MULTI_TICKER_10year.csv'

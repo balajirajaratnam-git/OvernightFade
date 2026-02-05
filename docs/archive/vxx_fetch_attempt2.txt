@@ -1,0 +1,17 @@
+================================================================================
+Fetching VXX (10 years)
+================================================================================
+
+Step 1/2: Fetching VXX daily data...
+Checking Daily Data for VXX...
+Fetching Daily from 2026-02-05...
+No new daily data found.
+
+Step 2/2: Fetching VXX minute data...
+
+Checking Intraday Data...
+Intraday sync complete. 730 fetched, 1719 cached.
+
+================================================================================
+VXX COMPLETE!
+================================================================================

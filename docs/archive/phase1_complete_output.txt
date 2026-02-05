@@ -1,0 +1,329 @@
+Traceback (most recent call last):
+  File "C:\Users\balaj\OneDrive\Trading\OvernightFade\src\backtester_multi_ticker.py", line 261, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\balaj\OneDrive\Trading\OvernightFade\src\backtester_multi_ticker.py", line 205, in main
+    console.print("[bold magenta]\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557[/bold magenta]")
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\console.py", line 1697, in print
+    with self:
+         ^^^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\console.py", line 870, in __exit__
+    self._exit_buffer()
+    ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\console.py", line 826, in _exit_buffer
+    self._check_buffer()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\console.py", line 2042, in _check_buffer
+    self._write_buffer()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\console.py", line 2078, in _write_buffer
+    legacy_windows_render(buffer, LegacyWindowsTerm(self.file))
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\_windows_renderer.py", line 17, in legacy_windows_render
+    term.write_styled(text, style)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\_win32_console.py", line 441, in write_styled
+    self.write_text(text)
+    ~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\_win32_console.py", line 402, in write_text
+    self.write(text)
+    ~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 0-65: character maps to <undefined>
+================================================================================
+Fetching VIX (10 years)
+================================================================================
+
+Step 1/2: Fetching VIX daily data...
+Checking Daily Data for VIX...
+Fetching Daily from 2015-01-01...
+No new daily data found.
+
+Step 2/2: Fetching VIX minute data...
+
+Checking Intraday Data...
+Intraday sync complete. 0 fetched, 0 cached.
+
+================================================================================
+VIX COMPLETE!
+================================================================================
+================================================================================
+Fetching XLK (10 years)
+================================================================================
+
+Step 1/2: Fetching XLK daily data...
+Checking Daily Data for XLK...
+Fetching Daily from 2015-01-01...
+Updated Daily Data. Last: 2026-02-04 05:00:00
+
+Step 2/2: Fetching XLK minute data...
+
+Checking Intraday Data...
+Intraday sync complete. 2513 fetched, 0 cached.
+
+================================================================================
+XLK COMPLETE!
+================================================================================
+================================================================================
+Fetching XLF (10 years)
+================================================================================
+
+Step 1/2: Fetching XLF daily data...
+Checking Daily Data for XLF...
+Fetching Daily from 2015-01-01...
+Updated Daily Data. Last: 2026-02-04 05:00:00
+
+Step 2/2: Fetching XLF minute data...
+
+Checking Intraday Data...
+Intraday sync complete. 2513 fetched, 0 cached.
+
+================================================================================
+XLF COMPLETE!
+================================================================================
+================================================================================
+Fetching XLE (10 years)
+================================================================================
+
+Step 1/2: Fetching XLE daily data...
+Checking Daily Data for XLE...
+Fetching Daily from 2015-01-01...
+Updated Daily Data. Last: 2026-02-04 05:00:00
+
+Step 2/2: Fetching XLE minute data...
+
+Checking Intraday Data...
+Intraday sync complete. 2513 fetched, 0 cached.
+
+================================================================================
+XLE COMPLETE!
+================================================================================
+================================================================================
+Fetching XLV (10 years)
+================================================================================
+
+Step 1/2: Fetching XLV daily data...
+Checking Daily Data for XLV...
+Fetching Daily from 2015-01-01...
+Updated Daily Data. Last: 2026-02-04 05:00:00
+
+Step 2/2: Fetching XLV minute data...
+
+Checking Intraday Data...
+Timeout. Retrying (1)...
+Intraday sync complete. 2513 fetched, 0 cached.
+
+================================================================================
+XLV COMPLETE!
+================================================================================
+================================================================================
+Fetching XLY (10 years)
+================================================================================
+
+Step 1/2: Fetching XLY daily data...
+Checking Daily Data for XLY...
+Fetching Daily from 2015-01-01...
+Updated Daily Data. Last: 2026-02-04 05:00:00
+
+Step 2/2: Fetching XLY minute data...
+
+Checking Intraday Data...
+Intraday sync complete. 2513 fetched, 0 cached.
+
+================================================================================
+XLY COMPLETE!
+================================================================================
+================================================================================
+Fetching XLU (10 years)
+================================================================================
+
+Step 1/2: Fetching XLU daily data...
+Checking Daily Data for XLU...
+Fetching Daily from 2015-01-01...
+Updated Daily Data. Last: 2026-02-04 05:00:00
+
+Step 2/2: Fetching XLU minute data...
+
+Checking Intraday Data...
+Timeout. Retrying (1)...
+Intraday sync complete. 2513 fetched, 0 cached.
+
+================================================================================
+XLU COMPLETE!
+================================================================================
+================================================================================
+Fetching XLRE (10 years)
+================================================================================
+
+Step 1/2: Fetching XLRE daily data...
+Checking Daily Data for XLRE...
+Fetching Daily from 2015-01-01...
+Updated Daily Data. Last: 2026-02-04 05:00:00
+
+Step 2/2: Fetching XLRE minute data...
+
+Checking Intraday Data...
+Intraday sync complete. 2512 fetched, 0 cached.
+
+================================================================================
+XLRE COMPLETE!
+================================================================================
+================================================================================
+Fetching XLI (10 years)
+================================================================================
+
+Step 1/2: Fetching XLI daily data...
+Checking Daily Data for XLI...
+Fetching Daily from 2015-01-01...
+Updated Daily Data. Last: 2026-02-04 05:00:00
+
+Step 2/2: Fetching XLI minute data...
+
+Checking Intraday Data...
+Timeout. Retrying (1)...
+Intraday sync complete. 2513 fetched, 0 cached.
+
+================================================================================
+XLI COMPLETE!
+================================================================================
+================================================================================
+Fetching XLB (10 years)
+================================================================================
+
+Step 1/2: Fetching XLB daily data...
+Checking Daily Data for XLB...
+Fetching Daily from 2015-01-01...
+Updated Daily Data. Last: 2026-02-04 05:00:00
+
+Step 2/2: Fetching XLB minute data...
+
+Checking Intraday Data...
+Intraday sync complete. 2513 fetched, 0 cached.
+
+================================================================================
+XLB COMPLETE!
+================================================================================
+Traceback (most recent call last):
+  File "C:\Users\balaj\OneDrive\Trading\OvernightFade\src\backtester_multi_ticker.py", line 261, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\balaj\OneDrive\Trading\OvernightFade\src\backtester_multi_ticker.py", line 205, in main
+    console.print("[bold magenta]\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557[/bold magenta]")
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\console.py", line 1697, in print
+    with self:
+         ^^^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\console.py", line 870, in __exit__
+    self._exit_buffer()
+    ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\console.py", line 826, in _exit_buffer
+    self._check_buffer()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\console.py", line 2042, in _check_buffer
+    self._write_buffer()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\console.py", line 2078, in _write_buffer
+    legacy_windows_render(buffer, LegacyWindowsTerm(self.file))
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\_windows_renderer.py", line 17, in legacy_windows_render
+    term.write_styled(text, style)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\_win32_console.py", line 441, in write_styled
+    self.write_text(text)
+    ~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\balaj\AppData\Roaming\Python\Python314\site-packages\rich\_win32_console.py", line 402, in write_text
+    self.write(text)
+    ~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 0-65: character maps to <undefined>
+================================================================================
+AUTOMATED PHASE 1 COMPLETION
+================================================================================
+This will:
+  1. Wait for DIA to complete
+  2. Run Backtest #1 (SPY, QQQ, IWM, DIA)
+  3. Fetch VIX
+  4. Fetch 9 sector ETFs
+  5. Run Backtest #2 (complete dataset)
+
+Fully automated - no intervention needed
+
+Waiting for DIA...
+DIA COMPLETE!
+
+================================================================================
+ALL 4 MAIN TICKERS COMPLETE!
+SPY: 2513 files
+QQQ: 2512 files
+IWM: 2512 files
+DIA: 2500+ files
+================================================================================
+
+================================================================================
+RUNNING BACKTEST: Phase 1A - 4 Main Tickers
+================================================================================
+
+================================================================================
+FETCHING VIX
+================================================================================
+
+================================================================================
+FETCHING XLK
+================================================================================
+
+================================================================================
+FETCHING XLF
+================================================================================
+
+================================================================================
+FETCHING XLE
+================================================================================
+
+================================================================================
+FETCHING XLV
+================================================================================
+
+================================================================================
+FETCHING XLY
+================================================================================
+
+================================================================================
+FETCHING XLU
+================================================================================
+
+================================================================================
+FETCHING XLRE
+================================================================================
+
+================================================================================
+FETCHING XLI
+================================================================================
+
+================================================================================
+FETCHING XLB
+================================================================================
+
+================================================================================
+RUNNING BACKTEST: Phase 1B - Complete Dataset with VIX + Sectors
+================================================================================
+
+================================================================================
+PHASE 1 COMPLETE!
+================================================================================
+
+Results:
+  - Backtest results: results/trade_log_MULTI_TICKER_10year.csv
+  - Individual tickers: results/trade_log_{TICKER}_10year.csv
+
+All data fetched:
+  - 4 main tickers (SPY, QQQ, IWM, DIA)
+  - VIX (for Phase 2)
+  - 9 sector ETFs (for Phase 4)
+
+READY FOR PHASE 2: VIX FILTER
+================================================================================

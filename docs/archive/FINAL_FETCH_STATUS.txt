@@ -1,0 +1,30 @@
+================================================================================
+DATA FETCH PROGRESS CHECK
+================================================================================
+Time: 10:14:52
+
+Ticker     Daily      Intraday Files       Status
+--------------------------------------------------------------------------------
+SPY        YES        2513                 COMPLETE
+QQQ        YES        2512                 COMPLETE
+IWM        YES        2512                 COMPLETE
+DIA        YES        2512                 COMPLETE
+VIX        NO         0                    PENDING
+XLK        YES        2513                 COMPLETE
+XLF        YES        2513                 COMPLETE
+XLE        YES        2513                 COMPLETE
+XLV        YES        2513                 COMPLETE
+XLY        YES        2513                 COMPLETE
+XLU        YES        2513                 COMPLETE
+XLRE       YES        2512                 COMPLETE
+XLI        YES        2513                 COMPLETE
+XLB        YES        2513                 COMPLETE
+================================================================================
+
+Summary:
+  Complete:     13/14
+  In Progress:  0/14
+  Pending:      1/14
+
+Fetch not started yet.
+Run: python fetch_data_simple.py

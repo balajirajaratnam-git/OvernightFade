@@ -1,0 +1,17 @@
+================================================================================
+Fetching VXX (10 years)
+================================================================================
+
+Step 1/2: Fetching VXX daily data...
+Checking Daily Data for VXX...
+Fetching Daily from 2015-01-01...
+Updated Daily Data. Last: 2026-02-04 05:00:00
+
+Step 2/2: Fetching VXX minute data...
+
+Checking Intraday Data...
+Intraday sync complete. 1735 fetched, 714 cached.
+
+================================================================================
+VXX COMPLETE!
+================================================================================

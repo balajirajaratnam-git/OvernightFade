@@ -1,0 +1,174 @@
+================================================================================
+                    DAILY PAPER TRADING CHECKLIST
+                         IG.com Strategy
+================================================================================
+
+DATE: __________   DAY: [ ] Mon [ ] Tue [ ] Wed [ ] Thu [ ] Fri
+
+================================================================================
+MORNING (Before 15:00 UK / 10:00 ET)
+================================================================================
+
+[ ] Get backtest prediction for today
+[ ] Log prediction to paper_trading_log.py
+
+    Ticker: _______
+    Signal: [ ] BUY CALL  [ ] BUY PUT  [ ] NO TRADE
+    Entry Price (predicted): $_______
+    Strike: _______
+    Target: $_______
+    Expiry: _______
+    Days to Expiry: [ ] 1  [ ] 2  [ ] 3
+
+================================================================================
+PRE-MARKET (15:45-15:59 UK / 10:45-10:59 ET)
+================================================================================
+
+[ ] IG.com open, demo account selected
+[ ] Check for unusual market events
+[ ] Set alarm for 15:58 UK (10:58 ET)
+[ ] Have this checklist ready
+
+================================================================================
+EXECUTION - 16:00 ET (EXACTLY!) - 21:00 UK
+================================================================================
+
+AT 16:00:00 ET - RECORD MARKET DATA:
+
+Time: 16:00:__ ET
+
+Underlying Prices:
+    SPY: $_______  QQQ: $_______  IWM: $_______  DIA: $_______
+
+Option Quotes (for your ticker):
+    Ticker: _______
+    Strike: _______
+    Expiry: _______
+
+    Bid: $_______
+    Ask: $_______
+    Mid: $_______
+    Spread %: ____% [(Ask-Bid)/Mid * 100]
+
+AT 16:00:30 ET - PLACE ORDER:
+
+[ ] Double-check: Ticker ____ Strike ____ Expiry ____
+[ ] Submit order (Market or Limit)
+[ ] Screenshot order confirmation
+
+Order Fill:
+    Order ID: __________
+    Fill Time: 16:__:__ ET
+    Filled Price: $_______
+    Underlying at Fill: $_______
+    Slippage: $______ (Filled - Mid)
+    Slippage %: ____%
+    Commission: $_______
+
+[ ] Log entry to paper_trading_log.py
+[ ] Screenshots saved
+
+================================================================================
+MONITORING (16:01 ET - Expiry)
+================================================================================
+
+[ ] Set alert at target price: $_______
+[ ] Set alert for expiry day 09:00 ET
+
+Check Schedule:
+[ ] 17:00 ET: 30-min check
+[ ] 20:00 ET: Evening check
+[ ] Before bed: Final check
+
+Next Day(s):
+[ ] 09:00 ET: Pre-market
+[ ] 12:00 ET: Midday
+[ ] 15:30 ET: Pre-close
+
+Progress Tracking:
+    Date: ____ Time: ____
+    Underlying: $_______
+    Option Bid/Ask: $_____ / $_____
+    Progress to Target: ____%
+
+================================================================================
+EXIT (When Target Hit or Expiry)
+================================================================================
+
+Exit Trigger:
+[ ] Target hit  [ ] Time stop  [ ] Manual close
+
+Exit Details:
+    Exit Time: ____:__:__ ET
+    Exit Date: __________
+    Underlying at Exit: $_______
+    Option Bid: $_______
+    Option Ask: $_______
+    Fill Price: $_______
+    Exit Commission: $_______
+
+P&L Calculation:
+    Entry Premium: $_______
+    Exit Premium: $_______
+    Gross P&L: $_______
+    Total Commission: $_______
+    Net P&L: $_______
+    Net P&L %: _____%
+
+    Result: [ ] WIN  [ ] LOSS
+
+[ ] Log exit to paper_trading_log.py
+
+================================================================================
+EVENING REVIEW (After Trade Closes)
+================================================================================
+
+[ ] Run compare_actual_vs_backtest('YYYY-MM-DD')
+
+Comparison:
+    PREDICTED              ACTUAL                 DIFF
+    Entry: $_____          $_____                 $_____
+    P&L: +45%              _____%                 _____pp
+    Result: ____           ____                   Match? ____
+
+Discrepancies:
+    Spread cost: ____%
+    Slippage: ____%
+    Theta impact: ____%
+    Other: _________________________________
+
+Lessons Learned:
+    _____________________________________________
+    _____________________________________________
+    _____________________________________________
+
+[ ] Update tracking spreadsheet (if using)
+
+================================================================================
+NOTES
+================================================================================
+
+_________________________________________________________________
+
+_________________________________________________________________
+
+_________________________________________________________________
+
+_________________________________________________________________
+
+================================================================================
+                        END OF DAILY CHECKLIST
+================================================================================
+
+WEEKLY (Every Sunday):
+[ ] Run calculate_adjustment_factors()
+[ ] Review week's performance
+[ ] Identify patterns
+[ ] Update strategy if needed
+
+MONTHLY (End of Month):
+[ ] Comprehensive analysis
+[ ] Update backtest parameters
+[ ] Decide: Continue paper trading or go live?
+
+================================================================================
