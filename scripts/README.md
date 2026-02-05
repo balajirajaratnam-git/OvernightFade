@@ -1,6 +1,9 @@
 # Scripts Directory
 
-This directory contains utility scripts and analysis tools.
+**Last Updated**: 2026-02-05
+**Version**: 5.0
+
+Organized executable scripts for trading, backtesting, data management, and analysis.
 
 ---
 
@@ -8,296 +11,211 @@ This directory contains utility scripts and analysis tools.
 
 ```
 scripts/
-└── analysis/               # Analysis and comparison scripts
-    ├── compare_exit_times.py
-    ├── analyze_losses.py
-    ├── verify_scratches.py
-    ├── show_trade_details.py
-    └── archive/            # Archived temporary scripts
-        ├── test_backtester_simple.py
-        └── test_uk_exit.py
+├── trading/          # Live/paper trading
+├── backtesting/      # Strategy backtests
+├── data/             # Data fetching & verification
+├── analysis/         # Performance analysis
+└── utils/            # Utility scripts
 ```
 
 ---
 
-## Analysis Scripts
+## Trading Scripts (`trading/`)
 
-### compare_exit_times.py
-**Purpose:** Compare strategy performance with different exit times
+### **auto_trade_ig.py** ⭐ PRIMARY
+Daily auto-trader with SHORT expiries strategy.
 
-**Usage:**
+**Usage**:
 ```bash
-python scripts/analysis/compare_exit_times.py
+# Run daily at 16:00 ET
+python scripts/trading/auto_trade_ig.py
+
+# Force run any day (testing)
+python scripts/trading/auto_trade_ig.py --force-run
 ```
 
-**Outputs:**
-- Performance comparison table
-- Win distribution analysis
-- Optimal exit time recommendation
+**Outputs**:
+- Order details for IG.com (US 500) and IBKR (SPY)
+- Reality-adjusted P/L expectations
+- SPY-only signals (warns if other tickers configured)
 
-**When to use:**
-- Testing new exit strategies
-- Validating exit time parameters
-- Understanding win timing patterns
+### **dashboard_pro.py**
+Legacy multi-ticker dashboard (use auto_trade_ig.py instead).
 
 ---
 
-### analyze_losses.py
-**Purpose:** Deep dive into losing trades
+## Backtesting Scripts (`backtesting/`)
 
-**Usage:**
+### **run_backtest_ig_short_expiries_reality.py** ⭐ PRIMARY
+Reality-adjusted backtest with SHORT expiries (1-3 days).
+
+**Usage**:
 ```bash
-python scripts/analysis/analyze_losses.py
+python scripts/backtesting/run_backtest_ig_short_expiries_reality.py
 ```
 
-**Analyzes:**
-- What percentage of losses could be avoided
-- Common patterns in losing trades
-- MFE (Maximum Favorable Excursion) analysis
+**Shows**:
+- SPY only: 34.3% CAGR (reality-adjusted)
+- Backtest vs reality comparison
+- Why SPY only is recommended
 
-**When to use:**
-- Improving strategy filters
-- Understanding loss sources
-- Identifying risk management opportunities
+### **run_backtest_ig_short_expiries.py**
+Idealized backtest (no reality adjustments).
+
+**Result**: 48.8% CAGR (idealized)
+
+### **run_backtest_ig_weekly_long.py**
+Weekly long expiries (6-7 days).
+
+### **run_backtest_ig_all_days.py**
+All days mixed expiries backtest.
+
+### **run_backtest_ig_weekly_expiries.py**
+Tuesday/Thursday/Friday weekly expiries.
+
+### **run_backtest_ig_timing.py**
+Different entry timing analysis.
+
+### **run_backtest_simple.py**
+Simple single-ticker backtest.
+
+### **run_phase2_vxx_filter.py**
+VIX filter backtest.
+
+### **run_phase3_position_sizing.py**
+Position sizing optimization.
+
+### **phase3_option_c_complete_analysis.py**
+Complete phase 3 analysis.
 
 ---
 
-### verify_scratches.py
-**Purpose:** Analyze "SCRATCH" outcomes and intrinsic value recovery
+## Data Scripts (`data/`)
 
-**Usage:**
+### **fetch_multi_ticker_data.py**
+Fetch historical data for all tickers (10 years).
+
+**Usage**:
 ```bash
-python scripts/analysis/verify_scratches.py
+python scripts/data/fetch_multi_ticker_data.py
 ```
 
-**Shows:**
-- Which trades recovered value via early exit
-- How much intrinsic value was captured
-- Scratch vs full loss comparison
+### **verify_multi_ticker_data.py**
+Verify data completeness and ranges.
 
-**When to use:**
-- Validating early exit logic
-- Understanding partial loss recovery
-- Comparing exit strategies
-
----
-
-### show_trade_details.py
-**Purpose:** Display detailed trade information with formatting
-
-**Usage:**
+**Usage**:
 ```bash
-python scripts/analysis/show_trade_details.py
+python scripts/data/verify_multi_ticker_data.py
 ```
 
-**Displays:**
-- Trade-by-trade breakdown
-- Signal types and outcomes
-- P/L distribution
+### **fetch_one_ticker.py**
+Fetch single ticker data.
 
-**When to use:**
-- Quick results overview
-- Generating reports
-- Debugging specific trades
+**Usage**:
+```bash
+python scripts/data/fetch_one_ticker.py SPY
+```
+
+### **fetch_data_simple.py**
+Simple data fetch script.
+
+### **check_fetch_progress.py**
+Check ongoing fetch progress.
+
+### **run_data_fetch.py**
+Run full data fetch pipeline.
 
 ---
 
-## Archive Directory
+## Analysis Scripts (`analysis/`)
 
-**Location:** `scripts/analysis/archive/`
+### **measure_reality_framework.py**
+Black-Scholes option pricing calculator for reality adjustments.
 
-**Purpose:** Storage for temporary test scripts and debugging code
+**Usage**:
+```bash
+python scripts/analysis/measure_reality_framework.py
+```
 
-**Contents:**
-- `test_backtester_simple.py` - Basic backtester import test
-- `test_uk_exit.py` - UK exit time debugging script
+### **paper_trading_log.py**
+Paper trading logging framework.
 
-**When to clean:**
-- Monthly review and deletion of old test files
-- Keep only if actively referenced
+### **analyze_kelly_equity.py**
+Kelly sizing and equity curve analysis.
+
+### **monthly_pnl_table.py**
+Monthly P&L breakdown table.
+
+### **stress_test_scenarios.py**
+Strategy stress testing.
+
+### **withdrawal_analysis.py**
+Withdrawal strategy analysis.
+
+### **analyze_losses.py**
+Losing trade analysis.
 
 ---
 
-## Creating New Analysis Scripts
+## Utility Scripts (`utils/`)
 
-### Template
+### **project_setup.py**
+Initial project setup.
 
-```python
-"""
-Script Purpose and Description
+### **auto_complete_phase1.py**
+Auto-complete phase 1 tasks.
 
-Brief explanation of what this script analyzes and why.
-"""
-
-import os
-import sys
-import pandas as pd
-
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
-
-from backtester import Backtester
-
-def main():
-    """Main analysis logic."""
-    # Load data
-    bt = Backtester()
-    results = bt.run()
-
-    # Analyze
-    # ...
-
-    # Display results
-    print("Analysis Results:")
-    print("-" * 80)
-    # ...
-
-if __name__ == "__main__":
-    main()
-```
-
-### Naming Conventions
-
-**Analysis scripts:**
-- `analyze_*.py` - In-depth analysis of specific aspects
-- `compare_*.py` - Comparison between strategies or parameters
-- `show_*.py` - Display/reporting scripts
-- `verify_*.py` - Validation and sanity checks
-
-**Temporary scripts:**
-- `test_*.py` - Testing and debugging
-- `temp_*.py` - Temporary exploration
-- `scratch_*.py` - Quick experiments
+### **run_full_pipeline.py**
+Run complete analysis pipeline.
 
 ---
 
 ## Running Scripts
 
-### From Project Root
+### **From Project Root** (Recommended)
 ```bash
-# Recommended approach
-python scripts/analysis/compare_exit_times.py
+python scripts/trading/auto_trade_ig.py
+python scripts/backtesting/run_backtest_ig_short_expiries_reality.py
+python scripts/data/fetch_multi_ticker_data.py
 ```
 
-### Direct Execution
-```bash
-# Also works if imports are set up correctly
-cd scripts/analysis
-python compare_exit_times.py
-```
+### **Important Notes**
+- All scripts use `sys.path.insert(0, 'src')` to import modules
+- Must run from project root directory
+- Scripts will fail if run from within scripts/ subdirectory
 
 ---
 
-## Output Locations
+## Common Tasks
 
-**Console output:** Default for quick analysis
-**File output:** Use `results/` directory for persistent results
-
-```python
-# Save analysis results
-output_path = os.path.join("results", "analysis_output.csv")
-df.to_csv(output_path, index=False)
-print(f"Results saved to {output_path}")
-```
-
----
-
-## Common Imports
-
-```python
-import os
-import sys
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
-
-# Import modules
-from backtester import Backtester
-from strategies import LastHourVeto
-from session_utils import get_overnight_window_utc, TZ_ET, TZ_UTC
-```
-
----
-
-## Best Practices
-
-### Script Structure
-✅ Clear purpose in docstring
-✅ Import statements at top
-✅ Main function with logic
-✅ `if __name__ == "__main__"` guard
-✅ Helpful print statements
-
-### Documentation
-✅ Explain what is analyzed
-✅ Document assumptions
-✅ Show example output in comments
-✅ Link to related analysis
-
-### File Management
-✅ Save important results to `results/`
-✅ Archive old test scripts
-✅ Delete temporary files after use
-✅ Use descriptive filenames
-
----
-
-## Maintenance
-
-### Monthly Cleanup
-
-**Review archive:**
+**Daily Trading**:
 ```bash
-# List archived files
-ls -lh scripts/analysis/archive/
-
-# Delete files older than 2 months
-find scripts/analysis/archive/ -name "*.py" -mtime +60 -delete
+python scripts/trading/auto_trade_ig.py
 ```
 
-**Organize results:**
+**Run Backtest**:
 ```bash
-# Move old analysis outputs
-mkdir -p results/archive/analysis/$(date +%Y-%m)
-mv results/analysis_*.csv results/archive/analysis/$(date +%Y-%m)/
+python scripts/backtesting/run_backtest_ig_short_expiries_reality.py
+```
+
+**Fetch Data**:
+```bash
+python scripts/data/fetch_multi_ticker_data.py
+```
+
+**Verify Data**:
+```bash
+python scripts/data/verify_multi_ticker_data.py
 ```
 
 ---
 
 ## Related Documentation
 
-- **docs/CORRECTED_STRATEGY_ANALYSIS.md** - Key analysis findings
-- **results/README.md** - Where to save analysis outputs
-- **src/README.md** - Source code reference
+- Main `README.md` - Project overview and quick start
+- `src/README.md` - Core modules documentation
+- `docs/guides/DAILY_PAPER_TRADING_CHECKLIST.md` - Daily workflow
 
 ---
 
-## Troubleshooting
-
-**Import errors:**
-```python
-# Ensure src is in path
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
-```
-
-**Data not found:**
-```bash
-# Run from project root
-cd /path/to/OvernightFade
-python scripts/analysis/script_name.py
-```
-
-**Missing dependencies:**
-```bash
-# Install requirements
-pip install -r requirements.txt
-```
-
----
-
-*Last updated: 2026-02-04*
+**Note**: All scripts tested and working. See main README for detailed usage examples.

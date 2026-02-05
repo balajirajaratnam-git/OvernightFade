@@ -73,9 +73,9 @@ def fetch_ticker_data(ticker, dm, description=""):
 
 def main():
     """Main execution."""
-    console.print("[bold magenta]╔════════════════════════════════════════════════════════════════╗[/bold magenta]")
-    console.print("[bold magenta]║   STOCKS DEVELOPER: MULTI-TICKER DATA FETCH (10 YEARS)        ║[/bold magenta]")
-    console.print("[bold magenta]╚════════════════════════════════════════════════════════════════╝[/bold magenta]")
+    console.print("[bold magenta]================================================================[/bold magenta]")
+    console.print("[bold magenta]   STOCKS DEVELOPER: MULTI-TICKER DATA FETCH (10 YEARS)         [/bold magenta]")
+    console.print("[bold magenta]================================================================[/bold magenta]")
 
     # Load config
     config = load_config()

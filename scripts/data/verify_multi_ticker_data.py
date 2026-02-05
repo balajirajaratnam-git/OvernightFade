@@ -77,9 +77,9 @@ def check_ticker_data(ticker):
 
 def main():
     """Main verification."""
-    console.print("[bold cyan]╔════════════════════════════════════════════════════════════╗[/bold cyan]")
-    console.print("[bold cyan]║        MULTI-TICKER DATA VERIFICATION                      ║[/bold cyan]")
-    console.print("[bold cyan]╚════════════════════════════════════════════════════════════╝[/bold cyan]")
+    console.print("[bold cyan]============================================================[/bold cyan]")
+    console.print("[bold cyan]       MULTI-TICKER DATA VERIFICATION                       [/bold cyan]")
+    console.print("[bold cyan]============================================================[/bold cyan]")
 
     # Load config
     config = load_config()

@@ -202,9 +202,9 @@ Avg P/L/Trade:    ${portfolio_stats['avg_pnl']:.2f}
 
 def main():
     """Main execution."""
-    console.print("[bold magenta]╔════════════════════════════════════════════════════════════════╗[/bold magenta]")
-    console.print("[bold magenta]║     MULTI-TICKER BACKTEST: OVERNIGHT FADE STRATEGY (10Y)       ║[/bold magenta]")
-    console.print("[bold magenta]╚════════════════════════════════════════════════════════════════╝[/bold magenta]")
+    console.print("[bold magenta]================================================================[/bold magenta]")
+    console.print("[bold magenta]    MULTI-TICKER BACKTEST: OVERNIGHT FADE STRATEGY (10Y)        [/bold magenta]")
+    console.print("[bold magenta]================================================================[/bold magenta]")
 
     # Load config
     config = load_config()
