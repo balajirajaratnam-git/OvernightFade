@@ -414,6 +414,49 @@ git push --tags
 
 ---
 
+## Update (Post-Git Init)
+
+**Date**: 2026-02-05 (Post-Git initialization)
+
+### Changes After Initial Commit:
+
+**Removed:**
+- ❌ `trade.py`, `backtest.py`, `fetch.py` - Wrapper scripts removed (not standard practice)
+- ❌ `delete/` folder - Old analysis files removed
+- ❌ `experiments/` folder - Moved to docs/archive/
+- ❌ Old documentation files - Moved 10 files from docs/ to docs/archive/
+- ❌ `_ul`, `complete_pipeline.bat` - Unnecessary files removed
+- ❌ Log files: `fetch_qqq.log`, `pipeline_output.log` - Removed
+
+**Final Root Directory (Clean):**
+```
+OvernightFade/
+├── .gitignore
+├── .gitattributes
+├── .env.template
+├── README.md
+├── requirements.txt
+├── GIT_SETUP_GUIDE.md
+└── REORGANIZATION_SUMMARY.md
+```
+
+**Usage Now:**
+Instead of wrapper scripts, use full paths:
+```bash
+# Auto-trader
+python scripts/trading/auto_trade_ig.py --force-run
+
+# Backtest
+python scripts/backtesting/run_backtest_ig_short_expiries_reality.py
+
+# Fetch data
+python scripts/data/fetch_multi_ticker_data.py
+```
+
+This follows Python best practices for application structure.
+
+---
+
 **Last Updated**: 2026-02-05
-**Version**: 5.0
-**Status**: ✅ Reorganization Complete - Ready for Git Init
+**Version**: 5.0.1 (Post-cleanup)
+**Status**: ✅ Reorganization Complete - Git Initialized

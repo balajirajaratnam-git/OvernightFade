@@ -33,13 +33,13 @@ This system implements a short-term mean-reversion options strategy:
 
 ```bash
 # Run daily at 16:00 ET
-python trade.py
+python scripts/trading/auto_trade_ig.py
 
 # Force run any day (for testing)
-python trade.py --force-run
+python scripts/trading/auto_trade_ig.py --force-run
 
 # Add other tickers (not recommended, shows warnings)
-python trade.py --tickers SPY QQQ
+python scripts/trading/auto_trade_ig.py --tickers SPY QQQ
 ```
 
 **Outputs**: Order details for **BOTH** IG.com and IBKR platforms
@@ -48,26 +48,26 @@ python trade.py --tickers SPY QQQ
 
 ```bash
 # Short expiries with reality adjustments (recommended)
-python backtest.py --reality
+python scripts/backtesting/run_backtest_ig_short_expiries_reality.py
 
 # Short expiries (idealized)
-python backtest.py
+python scripts/backtesting/run_backtest_ig_short_expiries.py
 
 # Weekly long expiries
-python backtest.py --weekly
+python scripts/backtesting/run_backtest_ig_weekly_long.py
 ```
 
 ### **3. Fetch Data**
 
 ```bash
 # Download/update all ticker data (10 years)
-python fetch.py
+python scripts/data/fetch_multi_ticker_data.py
 
 # Verify data completeness
-python fetch.py --verify
+python scripts/data/verify_multi_ticker_data.py
 
 # Fetch single ticker
-python fetch.py --ticker SPY
+python scripts/data/fetch_one_ticker.py SPY
 ```
 
 ### **4. Paper Trading**
@@ -89,11 +89,8 @@ OvernightFade/
 │
 ├── README.md                    # This file
 ├── requirements.txt             # Python dependencies
-├── LICENSE                      # License file
-│
-├── trade.py                     # Wrapper: Auto-trader
-├── backtest.py                  # Wrapper: Run backtests
-├── fetch.py                     # Wrapper: Fetch data
+├── GIT_SETUP_GUIDE.md          # Git setup instructions
+├── REORGANIZATION_SUMMARY.md   # Project reorganization notes
 │
 ├── config/                      # Configuration files
 │   ├── config.json              # Strategy parameters
@@ -167,14 +164,6 @@ OvernightFade/
 ---
 
 ## 📖 Key Files Explained
-
-### **Convenience Wrappers (Root Directory)**
-
-| File | Purpose | Usage |
-|------|---------|-------|
-| `trade.py` | Run auto-trader | `python trade.py` |
-| `backtest.py` | Run backtests | `python backtest.py --reality` |
-| `fetch.py` | Fetch data | `python fetch.py` |
 
 ### **Trading Scripts**
 
@@ -273,7 +262,7 @@ Reality WIN (SPY): +45% × 0.65 - 3% - 0.8% - 0.13% = +26.0%
 - Strikes: 5-point increments (6805, 6810, 6815)
 
 ```bash
-python trade.py  # Shows US 500 details
+python scripts/trading/auto_trade_ig.py  # Shows US 500 details
 ```
 
 ### **IBKR (Interactive Brokers)**
@@ -285,7 +274,7 @@ python trade.py  # Shows US 500 details
 - Strikes: $1 increments (680, 681, 682)
 
 ```bash
-python trade.py  # Shows SPY details
+python scripts/trading/auto_trade_ig.py  # Shows SPY details
 ```
 
 **Auto-trader outputs details for BOTH platforms.**
@@ -335,7 +324,7 @@ python trade.py  # Shows SPY details
 
 1. **Morning (before 15:00 UK / 10:00 ET)**
    ```bash
-   python trade.py
+   python scripts/trading/auto_trade_ig.py
    ```
    Get today's prediction and order details
 
@@ -368,7 +357,7 @@ Update `config/reality_adjustments.json` with real data.
 ### **Monthly Re-Backtest**
 
 ```bash
-python backtest.py --reality
+python scripts/backtesting/run_backtest_ig_short_expiries_reality.py
 ```
 
 Verify predicted CAGR matches actual paper trading results.
@@ -402,7 +391,7 @@ Or set in `config/config.json`.
 ### **4. Fetch Data**
 
 ```bash
-python fetch.py
+python scripts/data/fetch_multi_ticker_data.py
 ```
 
 Downloads 10 years of SPY, QQQ, IWM, DIA data.
@@ -443,7 +432,7 @@ Private. All rights reserved.
 
 ## 🎯 Next Steps
 
-1. **Start Paper Trading**: Run `python trade.py` daily
+1. **Start Paper Trading**: Run `python scripts/trading/auto_trade_ig.py` daily
 2. **Follow Checklist**: See `docs/guides/DAILY_PAPER_TRADING_CHECKLIST.md`
 3. **Calibrate**: After 3-4 weeks, update reality adjustments
 4. **Verify**: Compare backtest predictions with actual results

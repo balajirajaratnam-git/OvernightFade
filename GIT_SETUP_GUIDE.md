@@ -97,15 +97,14 @@ Untracked files:
   (use "git add <file>..." to include in what will be committed)
         .gitignore
         README.md
-        backtest.py
+        GIT_SETUP_GUIDE.md
+        REORGANIZATION_SUMMARY.md
         config/
         docs/
-        fetch.py
         requirements.txt
         scripts/
         src/
         tests/
-        trade.py
         ...
 
 nothing added to commit but untracked files present (use "git add" to track)
@@ -145,11 +144,13 @@ Changes to be committed:
   (use "git rm --cached <file>..." to unstage)
         new file:   .gitignore
         new file:   README.md
-        new file:   backtest.py
+        new file:   GIT_SETUP_GUIDE.md
+        new file:   REORGANIZATION_SUMMARY.md
         new file:   config/config.json
         new file:   config/reality_adjustments.json
         new file:   docs/backtests/AUTO_TRADER_REALITY_ADJUSTMENTS.md
         ...
+        new file:   scripts/data/fetch_multi_ticker_data.py
         new file:   scripts/trading/auto_trade_ig.py
         new file:   scripts/trading/dashboard_pro.py
         new file:   src/backtester.py
@@ -162,7 +163,7 @@ Changes to be committed:
 git status --short | wc -l
 ```
 
-Should be around 50-70 files (not thousands).
+Should be around 90-95 files (not thousands).
 
 ---
 
@@ -178,7 +179,6 @@ git commit -m "Initial commit: OvernightFade v5.0 - SHORT Expiries strategy
 - IG.com and IBKR platform support
 - Comprehensive documentation and user guides
 - Paper trading framework with logging
-- Convenience wrapper scripts for ease of use
 
 Project Structure:
 - src/: Core library code
@@ -483,7 +483,6 @@ git push --tags
 - ✅ Configuration (`config/config.json`, `config/reality_adjustments.json`)
 - ✅ Requirements (`requirements.txt`)
 - ✅ Tests (`tests/`)
-- ✅ Wrappers (`trade.py`, `backtest.py`, `fetch.py`)
 
 ### **If You Accidentally Commit Sensitive Data**
 
