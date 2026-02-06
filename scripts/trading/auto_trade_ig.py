@@ -53,6 +53,10 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
+# Add scripts/analysis to path for Black-Scholes
+sys.path.insert(0, 'scripts/analysis')
+from measure_reality_framework import black_scholes_call, black_scholes_put
+
 console = Console()
 
 # Timezones
@@ -426,40 +430,103 @@ def calculate_order_details(ticker, context, signal, expiry_date, days_to_expiry
     close = context["Close"]
     atr = context["ATR"]
 
-    # For SPY, convert to US 500
+    # For SPY, convert to US 500 (SPX on IG.com)
     if context["Ticker"] == "SPY":
         display_ticker = "US 500"
-        close_us500 = close * 10
-        atr_us500 = atr * 10
-        strike = calculate_strike_us500(close_us500)
-        current_price = close_us500
-        current_atr = atr_us500
+
+        # Fetch live SPX price (IG.com's US 500 is SPX, not SPY*10)
+        import yfinance as yf
+        try:
+            spx = yf.Ticker('^GSPC')
+            spx_hist = spx.history(period='1d')
+            spx_close = spx_hist['Close'].iloc[-1]
+            console.print(f"[dim]Fetched SPX close: {spx_close:.2f}[/dim]")
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not fetch SPX, using SPY*10 estimate[/yellow]")
+            spx_close = close * 10
+
+        strike = calculate_strike_us500(spx_close)
+        current_price = spx_close
+        current_atr = atr * 10  # Scale ATR from SPY to SPX
+        underlying_for_bs = spx_close / 10  # Convert back for Black-Scholes
+        strike_for_bs = strike / 10
+
+        # Store actual SPY price for IBKR (SPX/10 != SPY)
+        spy_actual_price = close
+        spy_actual_strike = int(round(close))
+        spy_actual_atr = atr
     elif context["Ticker"] == "IWM":
         display_ticker = "IWM"
         strike = calculate_strike_iwm(close)
         current_price = close
         current_atr = atr
+        underlying_for_bs = close
+        strike_for_bs = strike
+        # No separate IBKR values needed (same as IG)
+        spy_actual_price = None
+        spy_actual_strike = None
+        spy_actual_atr = None
     else:
         # QQQ, DIA, or other
         display_ticker = context["Ticker"]
         strike = int(round(close))
         current_price = close
         current_atr = atr
+        underlying_for_bs = close
+        strike_for_bs = strike
+        # No separate IBKR values needed (same as IG)
+        spy_actual_price = None
+        spy_actual_strike = None
+        spy_actual_atr = None
 
     # Determine option type
     option_type = "PUT" if "PUT" in signal else "CALL"
 
-    # Calculate target and limit
+    # Calculate underlying target price (for reference)
     target_move = current_atr * atr_mult
 
     if option_type == "PUT":
-        limit_price = current_price - target_move
-        limit_pts = -target_move
+        underlying_target = current_price - target_move
         direction = "DOWN"
     else:
-        limit_price = current_price + target_move
-        limit_pts = target_move
+        underlying_target = current_price + target_move
         direction = "UP"
+
+    # Calculate option premiums using Black-Scholes
+    # Parameters for Black-Scholes
+    T = days_to_expiry / 365.0  # Time to expiry in years
+    r = 0.05  # Risk-free rate (5%)
+    sigma = 0.15  # Implied volatility (15% - typical for SPY short-term)
+
+    # Calculate entry premium (current option price)
+    if option_type == "CALL":
+        entry_option = black_scholes_call(underlying_for_bs, strike_for_bs, T, r, sigma)
+    else:
+        entry_option = black_scholes_put(underlying_for_bs, strike_for_bs, T, r, sigma)
+
+    entry_premium = entry_option['price']
+
+    # For US 500, multiply premium by 10 to match IG.com pricing
+    if context["Ticker"] == "SPY":
+        entry_premium_display = entry_premium * 10
+    else:
+        entry_premium_display = entry_premium
+
+    # Calculate target premium using expected P&L
+    # Get realistic win % from adjustments
+    expiry_key = f"{days_to_expiry}_day"
+    source_ticker = context["Ticker"]
+    pnl_multiplier = adjustments["pnl_adjustments"][expiry_key].get(source_ticker, 0.5)
+
+    # Backtest assumption is +45% win, realistic is pnl_multiplier * 45%
+    realistic_win_pct = pnl_multiplier * 45  # e.g., 0.72 * 45 = 32.4%
+
+    # Target premium = entry premium * (1 + realistic_win_pct / 100)
+    target_premium_display = entry_premium_display * (1 + realistic_win_pct / 100)
+
+    # Limit price and points are now in option premium terms
+    limit_price = target_premium_display
+    limit_pts = target_premium_display - entry_premium_display
 
     # Calculate expected P&L with reality adjustments
     expected_pnl = calculate_expected_pnl(context["Ticker"], days_to_expiry, adjustments)
@@ -479,9 +546,15 @@ def calculate_order_details(ticker, context, signal, expiry_date, days_to_expiry
         "Limit_Price": limit_price,
         "Limit_Pts": limit_pts,
         "Target_Move": target_move,
+        "Underlying_Target": underlying_target,
+        "Entry_Premium": entry_premium_display,
         "Magnitude": context["Magnitude"],
         "Day_Direction": context["Direction"],
-        "Expected_PnL": expected_pnl
+        "Expected_PnL": expected_pnl,
+        # SPY-specific values for IBKR (when IG.com uses SPX)
+        "SPY_Actual_Price": spy_actual_price,
+        "SPY_Actual_Strike": spy_actual_strike,
+        "SPY_Actual_ATR": spy_actual_atr
     }
 
 
@@ -513,6 +586,9 @@ def display_order_summary(orders):
     Args:
         orders: List of order detail dicts
     """
+    # Load adjustments for IBKR calculations
+    adjustments = load_reality_adjustments()
+
     if not orders:
         console.print(Panel(
             "[bold yellow]NO TRADES TODAY[/bold yellow]\n\nAll tickers filtered (flat days)",
@@ -549,7 +625,8 @@ def display_order_summary(orders):
             ig_ticker = "US 500"
             ibkr_ticker = "SPY"
             ig_strike = order['Strike']
-            ibkr_strike = int(round(order['Current_Price'] / 10))
+            # Use actual SPY strike, not SPX/10
+            ibkr_strike = order['SPY_Actual_Strike'] if order['SPY_Actual_Strike'] is not None else int(round(order['Current_Price'] / 10))
         else:
             ig_ticker = source_ticker
             ibkr_ticker = source_ticker
@@ -577,8 +654,9 @@ def display_order_summary(orders):
 
     console.print(table)
     console.print()
-    console.print("[cyan]IG.com: SPY trades as US 500 (SPY * 10, strike in 5-pt increments)[/cyan]")
-    console.print("[cyan]IBKR: SPY trades as SPY (normal pricing, strike in $1 increments)[/cyan]")
+    console.print("[cyan]IG.com: US 500 is SPX (S&P 500 Index ~6800), strikes in 5-pt increments[/cyan]")
+    console.print("[cyan]IBKR: SPY is S&P 500 ETF (~$680), strikes in $1 increments[/cyan]")
+    console.print("[yellow]Note: Signal based on SPY backtest, but IG.com trades SPX (22pt difference)[/yellow]")
     console.print()
 
     # Detailed breakdown
@@ -600,7 +678,7 @@ def display_order_summary(orders):
             ig_strike = order['Strike']  # Already calculated for US 500
             ig_current = order['Current_Price']
             ig_limit = order['Limit_Price']
-            console.print(f"    Ticker: [bold]{ig_ticker}[/bold] (SPY * 10)")
+            console.print(f"    Ticker: [bold]{ig_ticker}[/bold] (SPX - S&P 500 Index)")
         else:
             # Other tickers trade directly
             ig_ticker = source_ticker
@@ -613,25 +691,63 @@ def display_order_summary(orders):
         console.print(f"    Strike: {ig_strike} (ATM)")
         console.print(f"    Expiry: {order['Expiry_Date']} ({order['Days_To_Expiry']}-day)")
         console.print(f"    Underlying at Entry: {ig_current:.2f}")
-        console.print(f"    Target (Limit): {ig_limit:.2f} ({order['Direction']} {abs(order['Limit_Pts']):.2f} pts)")
-        console.print(f"    Order Type: Limit order at {ig_limit:.2f}")
+        console.print(f"    Underlying Target: {order['Underlying_Target']:.2f} ({order['Direction']} {abs(order['Target_Move']):.2f} pts)")
+        console.print()
+        console.print(f"    [bold green]Option Premium Details:[/bold green]")
+        console.print(f"    Entry Premium (BUY): {order['Entry_Premium']:.2f} pts")
+        console.print(f"    Target Premium (SELL Limit): {ig_limit:.2f} pts")
+        console.print(f"    Expected Profit: +{abs(order['Limit_Pts']):.2f} pts ({pnl['realistic_win_pct']:+.1f}%)")
+        console.print()
+        console.print(f"    [bold]Action: BUY option at ~{order['Entry_Premium']:.2f} pts, set SELL limit at {ig_limit:.2f} pts[/bold]")
         console.print()
 
         # IBKR DETAILS
         console.print(f"  [bold white]IBKR (Interactive Brokers) Order Details:[/bold white]")
         if source_ticker == "SPY":
-            # IBKR uses SPY directly (not multiplied by 10)
+            # IBKR uses actual SPY (not SPX/10)
             ibkr_ticker = "SPY"
-            ibkr_strike = int(round(order['Current_Price'] / 10))  # Convert back to SPY strike
-            ibkr_current = order['Current_Price'] / 10
-            ibkr_limit = order['Limit_Price'] / 10
-            ibkr_limit_pts = order['Limit_Pts'] / 10
+
+            # Use actual SPY values (stored separately)
+            if order['SPY_Actual_Price'] is not None:
+                ibkr_current = order['SPY_Actual_Price']
+                ibkr_strike = order['SPY_Actual_Strike']
+                ibkr_target_move = order['SPY_Actual_ATR'] * 0.1  # Same ATR multiplier
+                ibkr_underlying_target = ibkr_current + ibkr_target_move if "CALL" in order['Option_Type'] else ibkr_current - ibkr_target_move
+
+                # Calculate SPY option premiums
+                T = order['Days_To_Expiry'] / 365.0
+                r = 0.05
+                sigma = 0.15
+
+                if order['Option_Type'] == "CALL":
+                    spy_option = black_scholes_call(ibkr_current, ibkr_strike, T, r, sigma)
+                else:
+                    spy_option = black_scholes_put(ibkr_current, ibkr_strike, T, r, sigma)
+
+                ibkr_entry_premium = spy_option['price']
+                pnl_multiplier = adjustments["pnl_adjustments"][f"{order['Days_To_Expiry']}_day"].get("SPY", 0.5)
+                realistic_win_pct = pnl_multiplier * 45
+                ibkr_limit = ibkr_entry_premium * (1 + realistic_win_pct / 100)
+                ibkr_limit_pts = ibkr_limit - ibkr_entry_premium
+            else:
+                # Fallback to SPX/10 if SPY values not available
+                ibkr_current = order['Current_Price'] / 10
+                ibkr_strike = int(round(order['Current_Price'] / 10))
+                ibkr_underlying_target = order['Underlying_Target'] / 10
+                ibkr_target_move = order['Target_Move'] / 10
+                ibkr_entry_premium = order['Entry_Premium'] / 10
+                ibkr_limit = order['Limit_Price'] / 10
+                ibkr_limit_pts = order['Limit_Pts'] / 10
+
             console.print(f"    Ticker: [bold]{ibkr_ticker}[/bold]")
         else:
             # Other tickers trade directly (same as IG)
             ibkr_ticker = source_ticker
             ibkr_strike = order['Strike']
             ibkr_current = order['Current_Price']
+            ibkr_underlying_target = order['Underlying_Target']
+            ibkr_target_move = order['Target_Move']
+            ibkr_entry_premium = order['Entry_Premium']
             ibkr_limit = order['Limit_Price']
             ibkr_limit_pts = order['Limit_Pts']
             console.print(f"    Ticker: [bold]{ibkr_ticker}[/bold]")
@@ -640,8 +756,14 @@ def display_order_summary(orders):
         console.print(f"    Strike: {ibkr_strike} (ATM)")
         console.print(f"    Expiry: {order['Expiry_Date']} ({order['Days_To_Expiry']}-day)")
         console.print(f"    Underlying at Entry: {ibkr_current:.2f}")
-        console.print(f"    Target (Limit): {ibkr_limit:.2f} ({order['Direction']} {abs(ibkr_limit_pts):.2f} pts)")
-        console.print(f"    Order Type: Limit order at {ibkr_limit:.2f}")
+        console.print(f"    Underlying Target: {ibkr_underlying_target:.2f} ({order['Direction']} {abs(ibkr_target_move):.2f} pts)")
+        console.print()
+        console.print(f"    [bold green]Option Premium Details:[/bold green]")
+        console.print(f"    Entry Premium (BUY): {ibkr_entry_premium:.2f} pts")
+        console.print(f"    Target Premium (SELL Limit): {ibkr_limit:.2f} pts")
+        console.print(f"    Expected Profit: +{abs(ibkr_limit_pts):.2f} pts ({pnl['realistic_win_pct']:+.1f}%)")
+        console.print()
+        console.print(f"    [bold]Action: BUY option at ~{ibkr_entry_premium:.2f} pts, set SELL limit at {ibkr_limit:.2f} pts[/bold]")
         console.print()
 
         # P&L EXPECTATIONS (same for both brokers)
@@ -878,8 +1000,9 @@ def main(force_run=False, tickers=None):
     console.print("[cyan]For paper trading workflow: See DAILY_PAPER_TRADING_CHECKLIST.md[/cyan]")
     console.print()
     console.print("[bold white]Broker Differences:[/bold white]")
-    console.print("  IG.com: SPY trades as 'US 500' (SPY * 10), strikes in 5-pt increments")
-    console.print("  IBKR: SPY trades as 'SPY' (normal), strikes in $1 increments")
+    console.print("  IG.com: US 500 is SPX (S&P 500 Index), strikes in 5-pt increments")
+    console.print("  IBKR: SPY is S&P 500 ETF, strikes in $1 increments")
+    console.print("  Signal based on SPY backtest, adjusted for SPX on IG.com")
     console.print("  Both platforms have Mon/Wed/Fri expiries available")
     console.print()
 

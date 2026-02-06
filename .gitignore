@@ -183,8 +183,14 @@ secrets/
 api_keys.json
 credentials.json
 config/ig_credentials.json
+config/ig_api_credentials.json
 *.env.local
 *.env.*.local
+
+# Trading logs with personal data
+logs/ig_paper_trades_*.json
+logs/ibkr_trades.json
+logs/paper_trades.json
 
 # ============================================================================
 # TEMPORARY FILES

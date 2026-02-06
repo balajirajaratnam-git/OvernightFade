@@ -82,6 +82,50 @@ See `docs/guides/DAILY_PAPER_TRADING_CHECKLIST.md` for complete workflow.
 
 ---
 
+## 🤖 Automated Trading & Data Collection (NEW!)
+
+**Automated paper trading system with cost calibration**
+
+### Quick Start (5 minutes)
+
+```bash
+# 1. Install dependencies
+pip install trading-ig yfinance scipy rich
+
+# 2. Configure IG.com credentials
+# Edit: config/ig_api_credentials.json
+
+# 3. Test connection
+python scripts/trading/ig_connector.py
+
+# 4. Daily at 20:50 UK (15:50 ET)
+python scripts/trading/auto_trade_ig_collect_data.py
+
+# 5. After 10 trades: Calibrate
+python scripts/analysis/auto_calibrate_from_trades.py
+```
+
+**What it does:**
+- ✅ Automated IG.com paper trading (20:50 UK + 21:00 UK entries)
+- ✅ Semi-automated IBKR (shows instructions, you place order)
+- ✅ Collects ALL execution data (bid/ask, fills, spreads, slippage)
+- ✅ Measures timing penalty (20:50 vs 21:00 comparison)
+- ✅ Auto-calibrates after 10 trades
+- ✅ Updates `reality_adjustments.json` with YOUR costs
+- ✅ Re-runs backtest with calibrated values
+- ✅ Tells you: "Strategy viable? Yes/No"
+
+**Guides:**
+- **Setup & Usage:** `QUICK_START_AUTOMATED.md`
+- **Complete Guide:** `AUTOMATED_TRADING_GUIDE.md`
+- **Implementation Details:** `AUTOMATED_TRADING_SUMMARY.md`
+
+**Decision after calibration:**
+- Costs < 8%: Strategy works (go live)
+- Costs > 10%: Strategy doesn't work (don't trade)
+
+---
+
 ## 📁 Project Structure
 
 ```

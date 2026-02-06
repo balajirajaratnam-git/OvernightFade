@@ -1,64 +1,72 @@
 {
-  "version": "1.0",
-  "description": "Reality adjustment factors derived from Black-Scholes modeling and paper trading calibration",
-  "last_updated": "2026-02-05",
-  "data_source": "Initial estimates from measure_reality_framework.py (NOT yet calibrated with real paper trading)",
+  "version": "2.0",
+  "description": "Reality adjustment factors - CONSERVATIVE estimates incorporating all identified issues",
+  "last_updated": "2026-02-05 23:00",
+  "data_source": "Conservative estimates post-audit (IV/theta/execution issues). NOT yet calibrated with paper trading.",
 
   "spread_costs": {
-    "comment": "Bid/ask spread as percentage of mid price (measured at 16:00 ET)",
-    "SPY": 0.03,
-    "QQQ": 0.05,
-    "IWM": 0.10,
-    "DIA": 0.15
+    "comment": "Bid/ask spread as percentage of mid price (REALISTIC: moderate execution)",
+    "SPY": 0.05,
+    "QQQ": 0.07,
+    "IWM": 0.12,
+    "DIA": 0.18
   },
 
   "slippage_pct": {
-    "comment": "Average slippage beyond mid price as percentage",
-    "SPY": 0.008,
-    "QQQ": 0.015,
-    "IWM": 0.023,
-    "DIA": 0.031
+    "comment": "Average slippage beyond mid price as percentage (REALISTIC: with limit orders)",
+    "SPY": 0.015,
+    "QQQ": 0.02,
+    "IWM": 0.03,
+    "DIA": 0.04
+  },
+
+  "close_timing_penalty": {
+    "comment": "Additional cost from entering near market close (enter at 15:50 not 16:00)",
+    "SPY": 0.02,
+    "QQQ": 0.03,
+    "IWM": 0.04,
+    "DIA": 0.05
   },
 
   "commission_per_contract": 0.65,
 
   "pnl_adjustments": {
-    "comment": "Adjustment multipliers for backtest P&L assumptions by expiry type and ticker",
-    "note": "Backtest assumes +45% on wins. Reality = +45% * adjustment_factor - spread - slippage - commission",
+    "comment": "Adjustment multipliers for backtest P&L assumptions by expiry type and ticker (REALISTIC)",
+    "note": "Backtest assumes +45% on wins. Reality = +45% * adjustment_factor - spread - slippage - close_timing - commission",
 
     "1_day": {
-      "comment": "1-day expiries: Tue->Wed, Thu->Fri",
-      "SPY": 0.72,
-      "QQQ": 0.58,
-      "IWM": 0.28,
+      "comment": "1-day expiries: Tue->Wed, Thu->Fri (REALISTIC with good execution)",
+      "SPY": 0.63,
+      "QQQ": 0.52,
+      "IWM": 0.25,
       "DIA": 0.12
     },
 
     "2_day": {
-      "comment": "2-day expiries: Mon->Wed, Wed->Fri",
-      "SPY": 0.65,
-      "QQQ": 0.51,
-      "IWM": 0.24,
-      "DIA": 0.09
+      "comment": "2-day expiries: Mon->Wed, Wed->Fri (UPDATED)",
+      "SPY": 0.50,
+      "QQQ": 0.40,
+      "IWM": 0.18,
+      "DIA": 0.08
     },
 
     "3_day": {
-      "comment": "3-day expiries: Fri->Mon",
-      "SPY": 0.58,
-      "QQQ": 0.45,
-      "IWM": 0.20,
-      "DIA": 0.06
+      "comment": "3-day expiries: Fri->Mon (UPDATED)",
+      "SPY": 0.45,
+      "QQQ": 0.35,
+      "IWM": 0.15,
+      "DIA": 0.05
     }
   },
 
   "win_rate_adjustments": {
-    "comment": "Expected win rate degradation from backtest to reality",
-    "overall": -0.03,
+    "comment": "Expected win rate degradation from backtest to reality (UPDATED: execution issues)",
+    "overall": -0.05,
     "by_ticker": {
-      "SPY": -0.02,
-      "QQQ": -0.03,
-      "IWM": -0.05,
-      "DIA": -0.06
+      "SPY": -0.05,
+      "QQQ": -0.06,
+      "IWM": -0.08,
+      "DIA": -0.10
     }
   },
 

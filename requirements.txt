@@ -1,12 +1,15 @@
 # Core Data & Analysis
 pandas>=2.0.0
 numpy>=1.24.0
+scipy>=1.10.0    # Scientific computing (Black-Scholes calculations)
 pyarrow>=12.0.0  # For Parquet file handling (Req 2.1)
 pytz>=2023.3     # Timezone handling (Req 12.3)
 
 # API & Networking
 requests>=2.31.0
 python-dotenv>=1.0.0 # Secure API key management
+yfinance>=0.2.0      # Yahoo Finance data (SPX price fetching)
+trading-ig>=0.0.18   # IG.com API wrapper for automated trading
 
 # User Interface
 rich>=13.4.0     # Terminal dashboard (Req 7.8)

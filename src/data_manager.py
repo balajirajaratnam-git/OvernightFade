@@ -270,7 +270,15 @@ class DataManager:
                 existing_df = pd.read_parquet(file_path)
                 if not existing_df.empty:
                     last_date = existing_df.index[-1]
-                    start_date = (last_date + timedelta(days=1)).strftime("%Y-%m-%d")
+                    last_date_str = last_date.strftime("%Y-%m-%d")
+
+                    # Check if last date is today and we're after market close
+                    # If so, re-fetch today to get the final close (not mid-day data)
+                    if last_date_str == today_str and is_after_cash_close_et():
+                        console.print("[yellow]Detected same-day data, re-fetching for final close...[/yellow]")
+                        start_date = today_str  # Re-fetch today
+                    else:
+                        start_date = (last_date + timedelta(days=1)).strftime("%Y-%m-%d")
             except Exception as e:
                 console.print(f"[bold red]Corrupt Daily File Detected![/bold red] Re-downloading all. ({e})")
                 os.remove(file_path)
