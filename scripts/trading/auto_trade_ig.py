@@ -53,9 +53,7 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-# Add scripts/analysis to path for Black-Scholes
-sys.path.insert(0, 'scripts/analysis')
-from measure_reality_framework import black_scholes_call, black_scholes_put
+from pricing import black_scholes
 
 console = Console()
 
@@ -577,34 +575,17 @@ def calculate_order_details(ticker, context, signal, expiry_date, days_to_expiry
     sigma = live_iv if live_iv is not None else 0.15  # VIX-derived IV (fallback 0.15)
 
     # Calculate entry premium - directly on current_price and strike (no conversion)
-    if option_type == "CALL":
-        entry_option = black_scholes_call(current_price, strike, T, r, sigma)
-    else:
-        entry_option = black_scholes_put(current_price, strike, T, r, sigma)
-
-    # Handle both dict return (T>0) and scalar return (T<=0) from BS
-    if isinstance(entry_option, dict):
-        entry_premium = entry_option['price']
-    else:
-        entry_premium = float(entry_option)
+    entry_premium = black_scholes(current_price, strike, T, r, sigma, option_type)['price']
 
     # Calculate EXIT premium via Black-Scholes at underlying target price
     # This is the CONSISTENT approach: same BS pricing used in backtests
-    # (run_backtest_option_limit.py, run_backtest_bs_pricing.py)
+    # (run_backtest_bs_pricing.py).
     #
     # Assumption: if underlying hits target, we assume it happens ~halfway through
     # the holding period (conservative estimate for time remaining at exit).
     T_exit = T * 0.5  # Assume target hit halfway through holding period
 
-    if option_type == "CALL":
-        exit_option = black_scholes_call(underlying_target, strike, T_exit, r, sigma)
-    else:
-        exit_option = black_scholes_put(underlying_target, strike, T_exit, r, sigma)
-
-    if isinstance(exit_option, dict):
-        exit_premium = exit_option['price']
-    else:
-        exit_premium = float(exit_option)
+    exit_premium = black_scholes(underlying_target, strike, T_exit, r, sigma, option_type)['price']
 
     # Target premium = BS-computed exit premium at underlying target price
     target_premium = exit_premium

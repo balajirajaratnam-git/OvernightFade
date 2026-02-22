@@ -12,7 +12,10 @@ For each trade:
 IV source: VIX daily close from yfinance (downloaded once, cached).
 If VIX unavailable, falls back to 20-day realized vol * sqrt(252).
 
-Spread/slippage/commission applied on top as real-world costs.
+Cost models:
+  --cost-model pct   (default) percentage-based spread + slippage from reality_adjustments.json
+  --cost-model fixed fixed-point spread loaded from config/cost_model_fixed.json if present,
+                     otherwise falls back to pct model
 """
 import sys
 sys.path.insert(0, 'src')
@@ -22,126 +25,15 @@ import numpy as np
 import json
 import os
 import math
+import argparse
 from datetime import datetime, timedelta
 from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
+from pricing import black_scholes, load_vix_data, get_iv_for_date, FixedPointCosts
+
 console = Console()
-
-# ---------------------------------------------------------------------------
-# Black-Scholes functions (from measure_reality_framework.py, inlined here)
-# ---------------------------------------------------------------------------
-
-def norm_cdf(x):
-    return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
-
-def norm_pdf(x):
-    return math.exp(-x * x / 2.0) / math.sqrt(2.0 * math.pi)
-
-def bs_price(S, K, T, r, sigma, option_type):
-    """
-    Black-Scholes option price.
-
-    S: spot price
-    K: strike
-    T: time to expiry in years (must be > 0)
-    r: risk-free rate
-    sigma: annualised implied volatility
-    option_type: 'CALL' or 'PUT'
-
-    Returns: option premium (float)
-    """
-    if T <= 0:
-        # At expiry: intrinsic only
-        if option_type == 'CALL':
-            return max(S - K, 0.0)
-        else:
-            return max(K - S, 0.0)
-
-    if sigma <= 0:
-        sigma = 0.001  # floor to avoid division by zero
-
-    d1 = (math.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * math.sqrt(T))
-    d2 = d1 - sigma * math.sqrt(T)
-
-    if option_type == 'CALL':
-        price = S * norm_cdf(d1) - K * math.exp(-r * T) * norm_cdf(d2)
-    else:
-        price = K * math.exp(-r * T) * norm_cdf(-d2) - S * norm_cdf(-d1)
-
-    return max(price, 0.0)
-
-# ---------------------------------------------------------------------------
-# VIX / IV helpers
-# ---------------------------------------------------------------------------
-
-def load_vix_data():
-    """
-    Load VIX daily close as our IV proxy.
-    Try local cache first, then download via yfinance.
-    Returns a Series indexed by date (tz-naive) with VIX close values.
-    """
-    cache_file = Path("data/vix_daily_cache.parquet")
-
-    if cache_file.exists():
-        df = pd.read_parquet(cache_file)
-        console.print(f"[green]Loaded cached VIX data: {len(df)} days[/green]")
-    else:
-        console.print("[cyan]Downloading VIX daily data via yfinance...[/cyan]")
-        try:
-            import yfinance as yf
-            vix = yf.download("^VIX", start="2016-01-01", end="2026-12-31", progress=False)
-            if vix.empty:
-                console.print("[red]yfinance returned empty VIX data[/red]")
-                return None
-            df = vix[['Close']].copy()
-            df.columns = ['VIX_Close']
-            # Flatten multi-index columns if yfinance returns them
-            if hasattr(df.columns, 'levels'):
-                df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]
-            df.to_parquet(cache_file)
-            console.print(f"[green]Downloaded and cached VIX data: {len(df)} days[/green]")
-        except Exception as e:
-            console.print(f"[red]Failed to download VIX: {e}[/red]")
-            return None
-
-    # Ensure clean date index
-    df.index = pd.to_datetime(df.index)
-    if df.index.tz is not None:
-        df.index = df.index.tz_localize(None)
-
-    # Return as Series
-    col = df.columns[0]
-    return df[col]
-
-
-def get_iv_for_date(date, vix_series, daily_df):
-    """
-    Get implied volatility for a given date.
-    Primary: VIX close / 100 (VIX 20 -> 0.20 annualised vol)
-    Fallback: 20-day realised vol from daily returns * sqrt(252)
-    """
-    if vix_series is not None:
-        # Normalise date
-        lookup = pd.Timestamp(date).normalize()
-        if lookup in vix_series.index:
-            return vix_series.loc[lookup] / 100.0
-        # Try nearest date within 5 days
-        nearby = vix_series.index[abs(vix_series.index - lookup) <= pd.Timedelta(days=5)]
-        if len(nearby) > 0:
-            closest = nearby[abs(nearby - lookup).argmin()]
-            return vix_series.loc[closest] / 100.0
-
-    # Fallback: realised vol from daily data
-    if daily_df is not None:
-        loc = daily_df.index.get_indexer([pd.Timestamp(date)], method='ffill')[0]
-        if loc >= 20:
-            returns = daily_df['Close'].iloc[loc-20:loc].pct_change().dropna()
-            if len(returns) >= 10:
-                return returns.std() * math.sqrt(252)
-
-    return 0.20  # absolute fallback
 
 
 # ---------------------------------------------------------------------------
@@ -205,7 +97,8 @@ def get_next_monday(date):
 # Core backtest with BS pricing
 # ---------------------------------------------------------------------------
 
-def run_bs_backtest(ticker, config, vix_series, adjustments, risk_free_rate=0.045):
+def run_bs_backtest(ticker, config, vix_series, adjustments, risk_free_rate=0.045,
+                    cost_model='pct', fixed_costs=None):
     """
     Run backtest with actual Black-Scholes option pricing per trade.
     """
@@ -299,7 +192,7 @@ def run_bs_backtest(ticker, config, vix_series, adjustments, risk_free_rate=0.04
             continue
 
         T_entry = days_to_expiry / 365.0
-        entry_premium = bs_price(entry_price, strike, T_entry, risk_free_rate, iv_entry, option_type)
+        entry_premium = black_scholes(entry_price, strike, T_entry, risk_free_rate, iv_entry, option_type)['price']
 
         if entry_premium <= 0.001:
             skipped_zero_premium += 1
@@ -376,7 +269,7 @@ def run_bs_backtest(ticker, config, vix_series, adjustments, risk_free_rate=0.04
             exit_T_remaining = max(remaining_seconds / (365.25 * 24 * 3600), 0.0)
 
             # Use same IV for exit (conservative: no IV crush assumption)
-            exit_premium = bs_price(exit_underlying, strike, exit_T_remaining, risk_free_rate, iv_entry, option_type)
+            exit_premium = black_scholes(exit_underlying, strike, exit_T_remaining, risk_free_rate, iv_entry, option_type)['price']
         else:
             # Option expires: could still have intrinsic value at open on expiry day
             # Use last known price or entry if no intraday data
@@ -416,43 +309,36 @@ def run_bs_backtest(ticker, config, vix_series, adjustments, risk_free_rate=0.04
                     exit_underlying = entry_price
 
             # At expiry, T=0, premium = intrinsic only
-            exit_premium = bs_price(exit_underlying, strike, 0.0, risk_free_rate, iv_entry, option_type)
+            exit_premium = black_scholes(exit_underlying, strike, 0.0, risk_free_rate, iv_entry, option_type)['price']
 
         # ----- P&L calculation -----
         # Gross P&L (theoretical, mid-to-mid)
         gross_pnl_pct = (exit_premium - entry_premium) / entry_premium
 
-        # Apply real-world costs
-        # Entry: pay half-spread + slippage over mid
-        entry_cost_mult = 1.0 + (spread_cost_pct / 2.0) + slippage_pct + timing_penalty_pct
-        # Exit: receive mid minus half-spread minus slippage
-        exit_cost_mult = 1.0 - (spread_cost_pct / 2.0) - slippage_pct
+        if cost_model == 'fixed' and fixed_costs is not None:
+            # Fixed-point model: deduct absolute point amounts from entry cost / exit proceeds
+            actual_entry_cost = entry_premium + fixed_costs.total_one_side_pts
+            actual_exit_proceeds = max(exit_premium - fixed_costs.total_one_side_pts, 0.0)
+            net_pnl_dollars = actual_exit_proceeds - actual_entry_cost
+            net_pnl_pct = net_pnl_dollars / actual_entry_cost if actual_entry_cost > 0 else 0.0
+            pnl_mult = net_pnl_pct
+        else:
+            # Percentage model (default): multiply entry up, multiply exit down
+            entry_cost_mult = 1.0 + (spread_cost_pct / 2.0) + slippage_pct + timing_penalty_pct
+            exit_cost_mult = 1.0 - (spread_cost_pct / 2.0) - slippage_pct
 
-        actual_entry_cost = entry_premium * entry_cost_mult
-        actual_exit_proceeds = exit_premium * max(exit_cost_mult, 0.0)
+            actual_entry_cost = entry_premium * entry_cost_mult
+            actual_exit_proceeds = exit_premium * max(exit_cost_mult, 0.0)
 
-        # Commission in dollar terms, expressed as pct of entry premium
-        # Assume 1 contract, commission both sides
-        # We express as fraction: commission / premium_in_dollars
-        # For SPY ATM option ~$5-15, commission $1.30 round-trip = 8-25% for tiny premiums
-        # But we're position-sizing in dollars, so commission is per $100 of notional
-        # Let's just apply as fixed cost per contract (entry + exit)
-        commission_total = commission * 2  # entry + exit
+            commission_total = commission * 2  # entry + exit
 
-        net_pnl_dollars = actual_exit_proceeds - actual_entry_cost
-        net_pnl_pct = net_pnl_dollars / actual_entry_cost if actual_entry_cost > 0 else 0.0
+            net_pnl_dollars = actual_exit_proceeds - actual_entry_cost
+            net_pnl_pct = net_pnl_dollars / actual_entry_cost if actual_entry_cost > 0 else 0.0
 
-        # Also compute commission impact per contract
-        # For position sizing: if we invest $X, we buy X / actual_entry_cost contracts
-        # Commission = (X / actual_entry_cost) * commission_total
-        # As percentage = commission_total / actual_entry_cost
-        # BUT entry_premium is per-share; SPY options are 100 shares per contract
-        # So: actual contract cost = actual_entry_cost * 100
-        # commission impact = commission_total / (actual_entry_cost * 100)
-        commission_impact_pct = commission_total / (actual_entry_cost * 100) if actual_entry_cost > 0 else 0
+            # Commission as pct of contract cost (100-share lot)
+            commission_impact_pct = commission_total / (actual_entry_cost * 100) if actual_entry_cost > 0 else 0
 
-        # Final P&L multiplier (as fraction, not percentage)
-        pnl_mult = net_pnl_pct - commission_impact_pct
+            pnl_mult = net_pnl_pct - commission_impact_pct
 
         # Also record the OLD hardcoded multiplier for comparison
         old_pnl_mult = 0.45 if target_hit else -1.05
@@ -527,6 +413,24 @@ def calculate_equity_curve(df, starting_capital, kelly_pct, max_position, pnl_co
 # ---------------------------------------------------------------------------
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Backtest with Black-Scholes option pricing",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        '--cost-model',
+        choices=['pct', 'fixed'],
+        default='pct',
+        help=(
+            "Cost model: 'pct' = percentage-based spread+slippage (default, baseline-compatible); "
+            "'fixed' = fixed-point spread loaded from config/cost_model_fixed.json "
+            "(use after spread sampling calibration)."
+        ),
+    )
+    args = parser.parse_args()
+
+    cost_model = args.cost_model
+
     console.print("=" * 80)
     console.print("[bold blue]BACKTEST: BLACK-SCHOLES OPTION PRICING (per-trade)[/bold blue]")
     console.print("=" * 80)
@@ -537,9 +441,30 @@ def main():
     console.print("       Entry premium at close, exit premium at target hit (or expiry)")
     console.print("       Real spread, slippage, timing penalty, commission applied")
     console.print()
+    console.print(f"[bold]Cost model:[/bold] {cost_model}")
+    console.print()
 
     config = load_config()
     adjustments = load_reality_adjustments()
+
+    # Resolve fixed_costs when --cost-model fixed is requested
+    fixed_costs = None
+    if cost_model == 'fixed':
+        fixed_cfg = Path("config/cost_model_fixed.json")
+        if fixed_cfg.exists():
+            fixed_costs = FixedPointCosts.from_config(str(fixed_cfg))
+            console.print(
+                f"[green]Loaded fixed cost model: half_spread={fixed_costs.half_spread_pts:.3f} pts, "
+                f"slippage={fixed_costs.slippage_pts:.3f} pts[/green]"
+            )
+        else:
+            console.print(
+                "[yellow]WARNING: config/cost_model_fixed.json not found. "
+                "Run spread sampling first (scripts/data/collect_ig_spreads.py). "
+                "Falling back to pct model.[/yellow]"
+            )
+            cost_model = 'pct'
+    console.print()
 
     # Load VIX data
     vix_series = load_vix_data()
@@ -557,7 +482,8 @@ def main():
 
     all_results = []
     for ticker in tickers:
-        result = run_bs_backtest(ticker, config, vix_series, adjustments)
+        result = run_bs_backtest(ticker, config, vix_series, adjustments,
+                                  cost_model=cost_model, fixed_costs=fixed_costs)
         if result is not None and not result.empty:
             all_results.append(result)
 

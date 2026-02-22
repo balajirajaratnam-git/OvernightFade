@@ -4,6 +4,61 @@
 
 ---
 
+## Strategic Status (updated 2026-02-22)
+
+### Key Findings
+
+| Finding | Detail |
+|---------|--------|
+| Baseline EV (pct cost model) | RED-only: **+8.15%/trade**; GREEN: -0.53% (dropped) |
+| Cost sensitivity | ATM EV drops to ~0% at 0.12 pts each-side spread (2x observed 0.09 pts) |
+| Best patterns | RED TUE-WED (+14.88% EV), RED THU-FRI (+7.78%), RED MON-WED (+5.26%) |
+| Spread observed (weekend) | ATM SPXWED: **1.80 pts bid-ask** = 5.5% of mid; half-spread = 0.90 pts |
+| Fixed-point break-even | ~0.09 pts each side — confirmed comfortable margin with 0.90 pts observed |
+
+### Automated Spread Sampling (Step 6A)
+
+- **Status**: Infrastructure complete; collector functional; awaiting live-session data
+- Collector: `scripts/data/collect_ig_spreads.py` (runs at 21:00 UK, appends to `data/ig_spread_samples.csv`)
+- Analyzer: `scripts/analysis/analyze_spread_samples.py --source auto`
+- 5 strike types: ATM, ITM_10, OTM_10, ITM_25, OTM_25 on SPXWED each run
+- **Action needed**: Run during a live trading session (Mon-Thu 21:00 UK) for calibrated spreads
+
+### SPXFRI Gap
+
+SPXFRI epics unavailable outside live trading sessions and on month-end Fridays
+(which roll to SPXEMO). The collector probes SPXFRI each run for auto-discovery.
+Do not pre-configure SPXFRI without confirming epic availability in a live session.
+
+### Cost Model Architecture
+
+Two models coexist in `src/pricing.py`:
+
+| Model | Class | Use |
+|-------|-------|-----|
+| Percentage | `TransactionCosts` | Baseline-compatible; default for all backtests |
+| Fixed-point | `FixedPointCosts` | Realistic for IG; activate with `--cost-model fixed` after calibration |
+
+`fixed_costs` takes precedence over `costs` when both are passed to `compute_trade_pnl()`.
+
+### Decision Tree (Steps 7-9)
+
+After spread sampling produces live-session calibrated `FixedPointCosts`:
+
+```
+Run: python scripts/backtesting/run_backtest_bs_pricing.py --cost-model fixed
+
+  ATM EV > +3%  →  Proceed to live trading (Step 7: position sizing)
+  ATM EV 0-3%   →  Signal filters: RED-only + pattern selection (Step 8)
+  ATM EV < 0%   →  Consider CFD/spread-bet instrument instead (Step 9)
+```
+
+### Single Source of Truth
+
+All Black-Scholes pricing flows through `src/pricing.py`. Never inline BS functions.
+
+---
+
 ## 🏗️ System Overview
 
 ### What This System Does
