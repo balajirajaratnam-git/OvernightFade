@@ -239,8 +239,9 @@ class TransactionCosts:
                 cfg = json.load(f)
             pct = cfg.get("cost_model", {}).get("percentage", {})
             return cls(
-                spread_pct=pct.get("spread_pct", 0.04),
-                slippage_pct=pct.get("slippage_pct", 0.01),
+                # Keys match config.json: "ig_spread_pct" / "ig_slippage_pct"
+                spread_pct=pct.get("ig_spread_pct", 0.04),
+                slippage_pct=pct.get("ig_slippage_pct", 0.01),
                 commission_per_contract=pct.get("commission_per_contract", 0.65),
             )
         except (FileNotFoundError, KeyError, json.JSONDecodeError):

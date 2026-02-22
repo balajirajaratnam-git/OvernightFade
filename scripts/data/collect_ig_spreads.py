@@ -50,10 +50,15 @@ STRIKE_OFFSETS = {
     "OTM_25": +25,
 }
 
-# IG expiry patterns to try in order
+# IG expiry patterns sampled every run.
+# SPXWED is the confirmed primary target.
+# SPXEMO / SPXEOM are the month-end Friday variants.
+# SPXFRI is intentionally NOT listed here — it is probed separately via the
+# discovery probe at the end of collect() so it is tried exactly once per run,
+# not once per strike-type (which would waste ~10 API calls on a pattern that
+# is unavailable most Sundays / month-end Fridays).
 EXPIRY_PATTERNS = [
     ("SPXWED", "Wednesday weekly"),
-    ("SPXFRI", "Friday weekly"),
     ("SPXEMO", "End-of-month near"),
     ("SPXEOM", "End-of-month far"),
 ]

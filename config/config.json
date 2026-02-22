@@ -22,11 +22,17 @@
 
   "position_sizing": {
     "method": "half_kelly",
+    "kelly_inputs": {
+      "win_rate": 0.78,
+      "avg_win_pct": 14.5,
+      "avg_loss_pct": -100.0,
+      "note": "From baseline_atm_vixiv.json RED-only results; update after spread sampling calibration"
+    },
     "risk_pct_per_trade": 0.01,
     "daily_cap_pct": 0.02,
     "weekly_cap_pct": 0.07,
     "starting_equity": 10000,
-    "notes": "1% equity per trade premium budget; daily/weekly caps prevent overexposure"
+    "notes": "Half-Kelly fraction applied to kelly_inputs above; risk_pct_per_trade is the premium budget per trade as fraction of equity"
   },
 
   "cost_model": {
@@ -51,16 +57,19 @@
     "expiry_codes": {
       "MON-WED": "SPXWED",
       "TUE-WED": "SPXWED",
-      "WED-FRI": "SPXFRI",
-      "THU-FRI": "SPXFRI",
-      "FRI-MON": "SPXMON"
+      "WED-FRI": "SPXFRI__UNCONFIRMED",
+      "THU-FRI": "SPXFRI__UNCONFIRMED",
+      "FRI-MON": "SPXMON__UNCONFIRMED",
+      "note": "Only SPXWED confirmed live. SPXFRI/SPXMON marked __UNCONFIRMED until the discovery probe finds them in a live session. Month-end Fridays may show as SPXEMO instead of SPXFRI."
     },
+    "confirmed_patterns": ["SPXWED"],
+    "unconfirmed_patterns": ["SPXFRI", "SPXMON"],
     "option_type_codes": {
       "CALL": "C",
       "PUT": "P"
     },
     "strike_increment": 5,
-    "notes": "SPXFRI may show as SPXEMO on month-end Fridays; collector probes both each run"
+    "notes": "Run collect_ig_spreads.py during a live Wed/Thu session to confirm SPXFRI. Run during a Mon/Tue session to confirm SPXWED. SPXFRI may appear as SPXEMO on month-end Fridays."
   },
 
   "directories": {
