@@ -36,19 +36,57 @@ def save_config(config):
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
 
-def get_spx_from_spy(spy_close, spy_atr):
+def fetch_spx_data(max_retries=3):
     """
-    Convert SPY to SPX using 10x multiplier.
+    Fetch live SPX (S&P 500 Index) data from yfinance.
+    Retries up to max_retries times on failure, then aborts.
 
-    This ensures consistency with backtest calculations which are based on SPY data.
-    Using live SPX data would create ATR calculation mismatches.
+    NO conversion from SPY. SPX data is fetched directly.
 
     Returns:
-        tuple: (spx_close, spx_atr, source)
+        dict: {'close': float, 'atr': float} with SPX values
+    Raises:
+        SystemExit: If all retries fail
     """
-    # Always use 10x multiplier for consistency with backtest
-    # Backtest is based on SPY data, so SPX targets must scale proportionally
-    return spy_close * 10, spy_atr * 10, "10x SPY (backtest-aligned)"
+    import yfinance as yf
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            console.print(f"[dim]Fetching SPX data from yfinance (attempt {attempt}/{max_retries})...[/dim]")
+            spx = yf.Ticker('^GSPC')
+            spx_hist = spx.history(period='30d')
+
+            if spx_hist.empty:
+                raise ValueError("No SPX data returned from yfinance")
+
+            spx_close = float(spx_hist['Close'].iloc[-1])
+
+            # Calculate ATR_14 directly on SPX data
+            high = spx_hist['High']
+            low = spx_hist['Low']
+            close_prev = spx_hist['Close'].shift(1)
+            tr = pd.concat([
+                high - low,
+                (high - close_prev).abs(),
+                (low - close_prev).abs()
+            ], axis=1).max(axis=1)
+            spx_atr = float(tr.rolling(14, min_periods=1).mean().iloc[-1])
+
+            console.print(f"[green]SPX data fetched: Close={spx_close:.2f}, ATR_14={spx_atr:.2f}[/green]")
+
+            return {
+                'close': spx_close,
+                'atr': spx_atr
+            }
+
+        except Exception as e:
+            console.print(f"[red]Attempt {attempt}/{max_retries} failed: {e}[/red]")
+            if attempt < max_retries:
+                import time
+                time.sleep(2)
+
+    console.print("[bold red]FATAL: Could not fetch SPX data after 3 attempts. Aborting.[/bold red]")
+    sys.exit(1)
 
 class MultiTickerDashboard:
     """
@@ -166,8 +204,10 @@ class MultiTickerDashboard:
         """
         Compact output mode - platform-specific ticker lists.
 
-        IG.com: US 500 (SPX) + IWM only (options-tradable)
+        IG.com: US 500 (SPX from yfinance) + IWM only (options-tradable)
         IBKR: All 4 tickers (SPY, QQQ, IWM, DIA)
+
+        SPX data is fetched directly from yfinance. NO SPY*10 conversions.
 
         Args:
             platform: "ig" for IG.com (default) or "ibkr" for IBKR
@@ -179,13 +219,13 @@ class MultiTickerDashboard:
 
         # Platform-specific ticker lists
         if platform == "ig":
-            # IG.com: Only US 500 (SPX from SPY) and IWM have options
-            display_tickers = ["SPY", "IWM"]  # Will convert SPY to SPX for display
+            # IG.com: Only US 500 (SPX) and IWM have options
+            display_tickers = ["SPY", "IWM"]
         else:
             # IBKR: All 4 tickers
             display_tickers = self.tickers
 
-        # Get date from SPY
+        # Get date from SPY (for signal generation)
         spy_ctx = self.get_ticker_context("SPY")
         if not spy_ctx:
             console.print("[red]Error: No SPY data available[/red]")
@@ -194,6 +234,11 @@ class MultiTickerDashboard:
         data_date = spy_ctx['Date'].strftime('%Y-%m-%d')
         console.print(f"[bold cyan]Date: {data_date}[/bold cyan]")
         console.print()
+
+        # Fetch SPX data from yfinance for IG.com US 500 pricing
+        spx_data = None
+        if platform == "ig" and "SPY" in display_tickers:
+            spx_data = fetch_spx_data(max_retries=3)
 
         # Calculate ATR multiplier (always 0.1x)
         atr_mult = 0.1
@@ -207,18 +252,14 @@ class MultiTickerDashboard:
 
             signal, reason = self.generate_signal_unfiltered(ctx)
 
-            # For IG.com, convert SPY to SPX
+            # For IG.com SPY -> use SPX data directly from yfinance
             if platform == "ig" and ticker == "SPY":
-                # Get SPX conversion
-                spx_close, spx_atr, spx_source = get_spx_from_spy(ctx['Close'], ctx['ATR'])
-
                 display_ticker = "US 500"
-                current_price = spx_close
-                current_atr = spx_atr
+                current_price = spx_data['close']
+                current_atr = spx_data['atr']
 
-                # Use SPX strike calculation (5-point increments)
                 option_type = "PUT" if "PUT" in signal else "CALL"
-                strike = self.calculate_strike_spx(spx_close, option_type)
+                strike = self.calculate_strike_spx(current_price, option_type)
             else:
                 # Regular ticker (IWM for IG.com, or all for IBKR)
                 display_ticker = ticker
@@ -253,7 +294,7 @@ class MultiTickerDashboard:
             rows.append({
                 'Ticker': display_ticker,
                 'Signal': signal,
-                'Strike': f"{strike}",  # No $ for cleaner display
+                'Strike': f"{strike}",
                 'Current': f"{current_price:.2f}",
                 'Limit_Price': f"{limit_price:.2f}",
                 'Limit_Pts': f"{limit_pts:+.2f}",
@@ -262,7 +303,6 @@ class MultiTickerDashboard:
 
         # Display table based on platform
         if platform == "ibkr":
-            # IBKR: Show Ticker, Signal, Strike, Current, Limit Price, Limit Pts
             table = Table(show_header=True, header_style="bold cyan", box=box.ROUNDED)
             table.add_column("Ticker", style="cyan", width=8)
             table.add_column("Signal", style="white", width=22)
@@ -283,7 +323,6 @@ class MultiTickerDashboard:
                 )
 
         else:  # IG.com
-            # IG.com: Show Ticker, Signal, Strike, Current, Limit Pts (NO Limit Price)
             table = Table(show_header=True, header_style="bold magenta", box=box.ROUNDED)
             table.add_column("Ticker", style="magenta", width=10)
             table.add_column("Signal", style="white", width=22)
@@ -306,7 +345,7 @@ class MultiTickerDashboard:
 
         if platform == "ig":
             console.print(f"[dim]IG.com options: US 500 (SPX) + IWM only[/dim]")
-            console.print(f"[dim]US 500 = SPY * 10 (maintains backtest price/ATR ratio)[/dim]")
+            console.print(f"[dim]US 500 pricing: SPX data from yfinance (no SPY conversion)[/dim]")
         else:
             console.print(f"[dim]IBKR: All 4 tickers available[/dim]")
 

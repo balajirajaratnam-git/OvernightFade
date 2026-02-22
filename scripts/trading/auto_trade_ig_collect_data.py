@@ -138,13 +138,37 @@ def get_latest_signal():
         return None
 
 
-def calculate_theoretical_price(signal_data):
-    """Calculate theoretical option price using Black-Scholes."""
+def fetch_vix_iv(max_retries=3):
+    """
+    Fetch current VIX level from yfinance and convert to implied volatility.
+    VIX / 100 = annualized IV (e.g., VIX=20 -> sigma=0.20).
+    Falls back to 0.15 if all retries fail.
+    """
+    for attempt in range(1, max_retries + 1):
+        try:
+            vix = yf.Ticker('^VIX')
+            vix_hist = vix.history(period='5d')
+            if vix_hist.empty:
+                raise ValueError("No VIX data returned")
+            vix_close = float(vix_hist['Close'].iloc[-1])
+            sigma = vix_close / 100.0
+            console.print(f"[green]VIX: {vix_close:.2f} -> IV={sigma:.4f}[/green]")
+            return sigma
+        except Exception as e:
+            console.print(f"[red]VIX attempt {attempt}/{max_retries} failed: {e}[/red]")
+            if attempt < max_retries:
+                time.sleep(2)
+    console.print("[yellow]Warning: Could not fetch VIX. Falling back to sigma=0.15[/yellow]")
+    return 0.15
+
+
+def calculate_theoretical_price(signal_data, live_iv=None):
+    """Calculate theoretical option price using Black-Scholes with VIX-derived IV."""
     S = signal_data['underlying_price']
     K = signal_data['strike']
     T = signal_data['days_to_expiry'] / 365.0
     r = 0.05  # Risk-free rate
-    sigma = 0.15  # IV (will be calibrated later)
+    sigma = live_iv if live_iv is not None else 0.15  # VIX-derived IV (fallback 0.15)
 
     option_type = 'call' if signal_data['signal'] == 'CALL' else 'put'
 
@@ -202,11 +226,11 @@ def show_ibkr_instructions(signal_data, theoretical_price):
     table.add_column("Value", style="white")
 
     table.add_row("Signal", signal_data['signal'])
-    table.add_row("Underlying", "SPY (not SPX)")
-    table.add_row("Strike", f"${signal_data['strike']/10:.2f}")  # SPY is 1/10 of SPX
+    table.add_row("Underlying", "SPX (US 500)")
+    table.add_row("Strike", f"${signal_data['strike']:.2f}")
     table.add_row("Expiry", signal_data['expiry_date'])
     table.add_row("Type", signal_data['expiry_label'])
-    table.add_row("Theoretical Price", f"${theoretical_price/10:.2f}")  # Scaled for SPY
+    table.add_row("Theoretical Price", f"${theoretical_price:.2f}")
     table.add_row("Action", "BUY TO OPEN")
     table.add_row("Order Type", "LIMIT (between mid and ask)")
 
@@ -215,7 +239,7 @@ def show_ibkr_instructions(signal_data, theoretical_price):
     console.print("\n[bold]Steps:[/bold]")
     console.print("1. Open IBKR TWS or Web Trader")
     console.print("2. Search: SPY")
-    console.print(f"3. Select: {signal_data['signal']} option, Strike ${signal_data['strike']/10:.2f}, Exp {signal_data['expiry_date']}")
+    console.print(f"3. Select: {signal_data['signal']} option, Strike ${signal_data['strike']:.2f}, Exp {signal_data['expiry_date']}")
     console.print("4. Check bid/ask spread")
     console.print("5. Place LIMIT order between mid and ask")
     console.print("6. After fill, return here and enter fill price")
@@ -248,16 +272,16 @@ def record_ibkr_trade(signal_data, theoretical_price, logger: TradeLogger):
         premium_paid = fill * size * 100  # Option contract = 100 shares
 
         spread_pct = (fill - mid) / mid if mid > 0 else 0
-        slippage_pct = (fill - theoretical_price/10) / (theoretical_price/10) if theoretical_price > 0 else 0
+        slippage_pct = (fill - theoretical_price) / theoretical_price if theoretical_price > 0 else 0
 
         trade_data = {
             'date': datetime.now().strftime("%Y-%m-%d"),
             'time': datetime.now().strftime("%H:%M:%S"),
             'signal': signal_data['signal'],
-            'strike': signal_data['strike'] / 10,  # SPY strike
+            'strike': signal_data['strike'],
             'expiry_date': signal_data['expiry_date'],
             'days_to_expiry': signal_data['days_to_expiry'],
-            'theoretical_price': theoretical_price / 10,
+            'theoretical_price': theoretical_price,
             'entry_bid': bid,
             'entry_ask': ask,
             'entry_mid': mid,
@@ -307,8 +331,12 @@ def main():
     console.print(f"  Underlying: ${signal_data['underlying_price']:.2f}")
     console.print()
 
+    # Fetch VIX-derived IV
+    live_iv = fetch_vix_iv(max_retries=3)
+    console.print(f"  Using IV (from VIX): {live_iv:.4f} ({live_iv*100:.1f}%)\n")
+
     # Calculate theoretical price
-    theoretical_price = calculate_theoretical_price(signal_data)
+    theoretical_price = calculate_theoretical_price(signal_data, live_iv=live_iv)
     console.print(f"[cyan]Theoretical option price: ${theoretical_price:.2f}[/cyan]\n")
 
     # IG.com paper trading

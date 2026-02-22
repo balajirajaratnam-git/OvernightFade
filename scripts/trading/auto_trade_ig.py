@@ -339,50 +339,144 @@ def generate_signal(context, flat_threshold=0.10):
     return "NO_TRADE", "Unknown direction"
 
 
-def calculate_expected_pnl(ticker, days_to_expiry, adjustments):
+def calculate_expected_pnl(ticker, days_to_expiry, adjustments, bs_win_pct=None):
     """
-    Calculate expected P&L outcomes with reality adjustments.
+    Calculate expected P&L outcomes using BS-derived win % and reality costs.
 
     Args:
         ticker: Ticker symbol (SPY, QQQ, IWM, DIA)
         days_to_expiry: 1, 2, or 3 days
         adjustments: Reality adjustments dict
+        bs_win_pct: BS-computed win percentage (exit_premium/entry_premium - 1) * 100
+                    If None, falls back to old fudge-factor method.
 
     Returns:
         dict: Expected P&L metrics
     """
-    # Backtest base assumption
-    backtest_win_pnl_pct = 45.0
-    backtest_loss_pnl_pct = -100.0  # Assuming total loss on losing trades
-
-    # Get adjustment factors
-    expiry_key = f"{days_to_expiry}_day"
-    pnl_adj = adjustments["pnl_adjustments"][expiry_key].get(ticker, 0.50)
+    # Get cost factors
     spread_cost = adjustments["spread_costs"].get(ticker, 0.05)
     slippage = adjustments["slippage_pct"].get(ticker, 0.01)
     commission = adjustments["commission_per_contract"]
 
-    # Realistic WIN P&L (apply adjustment, subtract costs)
-    realistic_win_pnl_pct = (backtest_win_pnl_pct * pnl_adj) - (spread_cost * 100) - (slippage * 100)
+    # Commission as % of assumed $1000 position (entry + exit)
+    commission_pct = (commission * 2 / 1000) * 100
 
-    # Assume $1000 position size for commission calculation
-    commission_pct = (commission * 2 / 1000) * 100  # Entry + exit commission as %
+    if bs_win_pct is not None:
+        # NEW: Use actual BS-computed win %
+        gross_win_pct = bs_win_pct
+    else:
+        # FALLBACK: Old fudge-factor method
+        expiry_key = f"{days_to_expiry}_day"
+        pnl_adj = adjustments["pnl_adjustments"][expiry_key].get(ticker, 0.50)
+        gross_win_pct = 45.0 * pnl_adj
 
-    realistic_win_pnl_pct -= commission_pct
+    # Net WIN P&L = gross BS gain - spread - slippage - commission
+    realistic_win_pnl_pct = gross_win_pct - (spread_cost * 100) - (slippage * 100) - commission_pct
 
-    # Realistic LOSS P&L (losses may be slightly worse due to spreads)
-    realistic_loss_pnl_pct = backtest_loss_pnl_pct - (spread_cost * 100) - commission_pct
+    # LOSS P&L: option expires worthless = -100% - costs
+    realistic_loss_pnl_pct = -100.0 - (spread_cost * 100) - commission_pct
 
     return {
-        "backtest_win_pct": backtest_win_pnl_pct,
+        "backtest_win_pct": gross_win_pct,
         "realistic_win_pct": realistic_win_pnl_pct,
-        "backtest_loss_pct": backtest_loss_pnl_pct,
+        "backtest_loss_pct": -100.0,
         "realistic_loss_pct": realistic_loss_pnl_pct,
-        "adjustment_factor": pnl_adj,
+        "adjustment_factor": gross_win_pct / 45.0 if gross_win_pct else 0,
         "spread_cost_pct": spread_cost * 100,
         "slippage_pct": slippage * 100,
         "commission_pct": commission_pct
     }
+
+
+def fetch_vix_iv(max_retries=3):
+    """
+    Fetch current VIX level from yfinance and convert to implied volatility.
+    VIX / 100 = annualized IV (e.g., VIX=20 -> sigma=0.20).
+    Falls back to 0.15 if all retries fail.
+
+    Returns:
+        float: implied volatility (e.g., 0.20)
+    """
+    import yfinance as yf
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            console.print(f"[dim]Fetching VIX from yfinance (attempt {attempt}/{max_retries})...[/dim]")
+            vix = yf.Ticker('^VIX')
+            vix_hist = vix.history(period='5d')
+
+            if vix_hist.empty:
+                raise ValueError("No VIX data returned from yfinance")
+
+            vix_close = float(vix_hist['Close'].iloc[-1])
+            sigma = vix_close / 100.0
+
+            # Sanity check: VIX should be between 5 and 100
+            if sigma < 0.05 or sigma > 1.0:
+                console.print(f"[yellow]Warning: VIX={vix_close:.1f} seems unusual, using anyway[/yellow]")
+
+            console.print(f"[green]VIX fetched: {vix_close:.2f} -> IV={sigma:.4f}[/green]")
+            return sigma
+
+        except Exception as e:
+            console.print(f"[red]VIX attempt {attempt}/{max_retries} failed: {e}[/red]")
+            if attempt < max_retries:
+                import time as _time
+                _time.sleep(2)
+
+    console.print("[yellow]Warning: Could not fetch VIX. Falling back to sigma=0.15[/yellow]")
+    return 0.15
+
+
+def fetch_spx_data(max_retries=3):
+    """
+    Fetch live SPX (S&P 500 Index) data from yfinance.
+    Retries up to max_retries times on failure, then aborts.
+
+    Returns:
+        dict: {'close': float, 'atr': float} with SPX values
+    Raises:
+        SystemExit: If all retries fail
+    """
+    import yfinance as yf
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            console.print(f"[dim]Fetching SPX data from yfinance (attempt {attempt}/{max_retries})...[/dim]")
+            spx = yf.Ticker('^GSPC')
+            spx_hist = spx.history(period='30d')
+
+            if spx_hist.empty:
+                raise ValueError("No SPX data returned from yfinance")
+
+            spx_close = spx_hist['Close'].iloc[-1]
+
+            # Calculate ATR_14 directly on SPX data
+            high = spx_hist['High']
+            low = spx_hist['Low']
+            close_prev = spx_hist['Close'].shift(1)
+            tr = pd.concat([
+                high - low,
+                (high - close_prev).abs(),
+                (low - close_prev).abs()
+            ], axis=1).max(axis=1)
+            spx_atr = tr.rolling(14, min_periods=1).mean().iloc[-1]
+
+            console.print(f"[green]SPX data fetched: Close={spx_close:.2f}, ATR_14={spx_atr:.2f}[/green]")
+
+            return {
+                'close': float(spx_close),
+                'atr': float(spx_atr)
+            }
+
+        except Exception as e:
+            console.print(f"[red]Attempt {attempt}/{max_retries} failed: {e}[/red]")
+            if attempt < max_retries:
+                import time as _time
+                _time.sleep(2)
+
+    console.print("[bold red]FATAL: Could not fetch SPX data after 3 attempts. Aborting.[/bold red]")
+    sys.exit(1)
 
 
 def calculate_strike_us500(close_price):
@@ -390,10 +484,10 @@ def calculate_strike_us500(close_price):
     Calculate ATM strike for US 500 (5-point increments).
 
     Args:
-        close_price: Close price (SPY * 10)
+        close_price: SPX close price (e.g., ~6000)
 
     Returns:
-        int: Strike price
+        int: Strike price rounded to nearest 5
     """
     return int(round(close_price / 5) * 5)
 
@@ -411,17 +505,25 @@ def calculate_strike_iwm(close_price):
     return int(round(close_price))
 
 
-def calculate_order_details(ticker, context, signal, expiry_date, days_to_expiry, adjustments, atr_mult=0.1):
+def calculate_order_details(ticker, context, signal, expiry_date, days_to_expiry, adjustments, spx_data=None, atr_mult=0.1, live_iv=None):
     """
     Calculate complete order details with reality adjustments.
 
+    For SPY signals: uses live SPX data directly from yfinance.
+    NO conversions between SPY and SPX. SPX prices, ATR, strike, and
+    BS premiums are all computed natively on SPX data.
+
+    The signal (BUY PUT / BUY CALL) comes from SPY backtest data,
+    but ALL pricing is done on SPX (US 500) directly.
+
     Args:
         ticker: Display ticker (US 500, QQQ, IWM, DIA)
-        context: Market context
+        context: Market context (from SPY data - used for signal only)
         signal: Trading signal
         expiry_date: Expiry date
         days_to_expiry: Days to expiry (1, 2, or 3)
         adjustments: Reality adjustments dict
+        spx_data: Dict with 'close' and 'atr' from fetch_spx_data() (for SPY ticker)
         atr_mult: ATR multiplier for target
 
     Returns:
@@ -430,54 +532,30 @@ def calculate_order_details(ticker, context, signal, expiry_date, days_to_expiry
     close = context["Close"]
     atr = context["ATR"]
 
-    # For SPY, convert to US 500 (SPX on IG.com)
+    # For SPY signals, use SPX data directly (no conversion)
     if context["Ticker"] == "SPY":
         display_ticker = "US 500"
 
-        # Fetch live SPX price (IG.com's US 500 is SPX, not SPY*10)
-        import yfinance as yf
-        try:
-            spx = yf.Ticker('^GSPC')
-            spx_hist = spx.history(period='1d')
-            spx_close = spx_hist['Close'].iloc[-1]
-            console.print(f"[dim]Fetched SPX close: {spx_close:.2f}[/dim]")
-        except Exception as e:
-            console.print(f"[yellow]Warning: Could not fetch SPX, using SPY*10 estimate[/yellow]")
-            spx_close = close * 10
+        if spx_data is None:
+            console.print("[bold red]ERROR: SPX data required for SPY signal. Aborting.[/bold red]")
+            sys.exit(1)
 
-        strike = calculate_strike_us500(spx_close)
-        current_price = spx_close
-        current_atr = atr * 10  # Scale ATR from SPY to SPX
-        underlying_for_bs = spx_close / 10  # Convert back for Black-Scholes
-        strike_for_bs = strike / 10
+        # Use SPX data directly - no conversion from SPY
+        current_price = spx_data['close']
+        current_atr = spx_data['atr']
+        strike = calculate_strike_us500(current_price)
 
-        # Store actual SPY price for IBKR (SPX/10 != SPY)
-        spy_actual_price = close
-        spy_actual_strike = int(round(close))
-        spy_actual_atr = atr
     elif context["Ticker"] == "IWM":
         display_ticker = "IWM"
         strike = calculate_strike_iwm(close)
         current_price = close
         current_atr = atr
-        underlying_for_bs = close
-        strike_for_bs = strike
-        # No separate IBKR values needed (same as IG)
-        spy_actual_price = None
-        spy_actual_strike = None
-        spy_actual_atr = None
     else:
         # QQQ, DIA, or other
         display_ticker = context["Ticker"]
         strike = int(round(close))
         current_price = close
         current_atr = atr
-        underlying_for_bs = close
-        strike_for_bs = strike
-        # No separate IBKR values needed (same as IG)
-        spy_actual_price = None
-        spy_actual_strike = None
-        spy_actual_atr = None
 
     # Determine option type
     option_type = "PUT" if "PUT" in signal else "CALL"
@@ -493,43 +571,57 @@ def calculate_order_details(ticker, context, signal, expiry_date, days_to_expiry
         direction = "UP"
 
     # Calculate option premiums using Black-Scholes
-    # Parameters for Black-Scholes
-    T = days_to_expiry / 365.0  # Time to expiry in years
+    # BS computed directly on the trading instrument's price (SPX for US 500)
+    T = max(days_to_expiry, 1) / 365.0  # Time to expiry in years (min 1 day)
     r = 0.05  # Risk-free rate (5%)
-    sigma = 0.15  # Implied volatility (15% - typical for SPY short-term)
+    sigma = live_iv if live_iv is not None else 0.15  # VIX-derived IV (fallback 0.15)
 
-    # Calculate entry premium (current option price)
+    # Calculate entry premium - directly on current_price and strike (no conversion)
     if option_type == "CALL":
-        entry_option = black_scholes_call(underlying_for_bs, strike_for_bs, T, r, sigma)
+        entry_option = black_scholes_call(current_price, strike, T, r, sigma)
     else:
-        entry_option = black_scholes_put(underlying_for_bs, strike_for_bs, T, r, sigma)
+        entry_option = black_scholes_put(current_price, strike, T, r, sigma)
 
-    entry_premium = entry_option['price']
-
-    # For US 500, multiply premium by 10 to match IG.com pricing
-    if context["Ticker"] == "SPY":
-        entry_premium_display = entry_premium * 10
+    # Handle both dict return (T>0) and scalar return (T<=0) from BS
+    if isinstance(entry_option, dict):
+        entry_premium = entry_option['price']
     else:
-        entry_premium_display = entry_premium
+        entry_premium = float(entry_option)
 
-    # Calculate target premium using expected P&L
-    # Get realistic win % from adjustments
-    expiry_key = f"{days_to_expiry}_day"
-    source_ticker = context["Ticker"]
-    pnl_multiplier = adjustments["pnl_adjustments"][expiry_key].get(source_ticker, 0.5)
+    # Calculate EXIT premium via Black-Scholes at underlying target price
+    # This is the CONSISTENT approach: same BS pricing used in backtests
+    # (run_backtest_option_limit.py, run_backtest_bs_pricing.py)
+    #
+    # Assumption: if underlying hits target, we assume it happens ~halfway through
+    # the holding period (conservative estimate for time remaining at exit).
+    T_exit = T * 0.5  # Assume target hit halfway through holding period
 
-    # Backtest assumption is +45% win, realistic is pnl_multiplier * 45%
-    realistic_win_pct = pnl_multiplier * 45  # e.g., 0.72 * 45 = 32.4%
+    if option_type == "CALL":
+        exit_option = black_scholes_call(underlying_target, strike, T_exit, r, sigma)
+    else:
+        exit_option = black_scholes_put(underlying_target, strike, T_exit, r, sigma)
 
-    # Target premium = entry premium * (1 + realistic_win_pct / 100)
-    target_premium_display = entry_premium_display * (1 + realistic_win_pct / 100)
+    if isinstance(exit_option, dict):
+        exit_premium = exit_option['price']
+    else:
+        exit_premium = float(exit_option)
 
-    # Limit price and points are now in option premium terms
-    limit_price = target_premium_display
-    limit_pts = target_premium_display - entry_premium_display
+    # Target premium = BS-computed exit premium at underlying target price
+    target_premium = exit_premium
 
-    # Calculate expected P&L with reality adjustments
-    expected_pnl = calculate_expected_pnl(context["Ticker"], days_to_expiry, adjustments)
+    # Limit price and points are in option premium terms (SPX scale for US 500)
+    limit_price = target_premium
+    limit_pts = target_premium - entry_premium
+
+    # Also compute the realistic gain % for display
+    if entry_premium > 0:
+        realistic_win_pct = (exit_premium - entry_premium) / entry_premium * 100
+    else:
+        realistic_win_pct = 0.0
+
+    # Apply spread/slippage costs to get net expectation
+    dte_for_lookup = max(days_to_expiry, 1)
+    expected_pnl = calculate_expected_pnl(context["Ticker"], dte_for_lookup, adjustments, bs_win_pct=realistic_win_pct)
 
     return {
         "Display_Ticker": display_ticker,
@@ -547,14 +639,10 @@ def calculate_order_details(ticker, context, signal, expiry_date, days_to_expiry
         "Limit_Pts": limit_pts,
         "Target_Move": target_move,
         "Underlying_Target": underlying_target,
-        "Entry_Premium": entry_premium_display,
+        "Entry_Premium": entry_premium,
         "Magnitude": context["Magnitude"],
         "Day_Direction": context["Direction"],
         "Expected_PnL": expected_pnl,
-        # SPY-specific values for IBKR (when IG.com uses SPX)
-        "SPY_Actual_Price": spy_actual_price,
-        "SPY_Actual_Strike": spy_actual_strike,
-        "SPY_Actual_ATR": spy_actual_atr
     }
 
 
@@ -581,14 +669,11 @@ def log_order_to_csv(order_details, log_file="logs/ig_orders_dryrun.csv"):
 def display_order_summary(orders):
     """
     Display summary of calculated orders with reality-adjusted P&L expectations.
-    Shows details for BOTH IG.com and IBKR.
+    All values shown are for IG.com (US 500 = SPX).
 
     Args:
         orders: List of order detail dicts
     """
-    # Load adjustments for IBKR calculations
-    adjustments = load_reality_adjustments()
-
     if not orders:
         console.print(Panel(
             "[bold yellow]NO TRADES TODAY[/bold yellow]\n\nAll tickers filtered (flat days)",
@@ -602,38 +687,22 @@ def display_order_summary(orders):
     console.print("[bold green]DRY-RUN: ORDERS THAT WOULD BE PLACED[/bold green]")
     console.print("=" * 80)
     console.print()
-    console.print("[cyan]Showing details for BOTH IG.com and Interactive Brokers (IBKR)[/cyan]")
-    console.print()
 
-    table = Table(show_header=True, header_style="bold cyan", title="Order Summary (IG.com format)")
-    table.add_column("IG Ticker", style="cyan", width=10)
-    table.add_column("IBKR Ticker", style="cyan", width=10)
+    table = Table(show_header=True, header_style="bold cyan", title="Order Summary (IG.com)")
+    table.add_column("Ticker", style="cyan", width=10)
     table.add_column("Signal", width=10)
-    table.add_column("Strike (IG)", justify="right", width=12)
-    table.add_column("Strike (IBKR)", justify="right", width=12)
+    table.add_column("Strike", justify="right", width=10)
     table.add_column("Expiry", width=12)
     table.add_column("DTE", justify="right", width=5)
+    table.add_column("Entry Prem", justify="right", width=12)
+    table.add_column("Limit Pts", justify="right", width=12)
     table.add_column("Realistic P&L", justify="right", width=15)
 
     for order in orders:
         signal_style = "green" if "BUY" in order["Signal"] else "yellow"
         pnl = order["Expected_PnL"]
-        source_ticker = order["Source_Ticker"]
 
-        # Calculate IBKR values
-        if source_ticker == "SPY":
-            ig_ticker = "US 500"
-            ibkr_ticker = "SPY"
-            ig_strike = order['Strike']
-            # Use actual SPY strike, not SPX/10
-            ibkr_strike = order['SPY_Actual_Strike'] if order['SPY_Actual_Strike'] is not None else int(round(order['Current_Price'] / 10))
-        else:
-            ig_ticker = source_ticker
-            ibkr_ticker = source_ticker
-            ig_strike = order['Strike']
-            ibkr_strike = order['Strike']
-
-        # Color code realistic P&L (green if good, yellow if marginal, red if poor)
+        # Color code realistic P&L
         if pnl["realistic_win_pct"] > 30:
             pnl_style = "green"
         elif pnl["realistic_win_pct"] > 15:
@@ -642,27 +711,22 @@ def display_order_summary(orders):
             pnl_style = "red"
 
         table.add_row(
-            ig_ticker,
-            ibkr_ticker,
+            order['Display_Ticker'],
             f"[{signal_style}]{order['Option_Type']}[/{signal_style}]",
-            str(ig_strike),
-            str(ibkr_strike),
+            str(order['Strike']),
             order["Expiry_Date"],
             str(order["Days_To_Expiry"]),
+            f"{order['Entry_Premium']:.2f}",
+            f"{order['Limit_Pts']:.2f}",
             f"[{pnl_style}]{pnl['realistic_win_pct']:+.1f}%[/{pnl_style}]"
         )
 
     console.print(table)
     console.print()
-    console.print("[cyan]IG.com: US 500 is SPX (S&P 500 Index ~6800), strikes in 5-pt increments[/cyan]")
-    console.print("[cyan]IBKR: SPY is S&P 500 ETF (~$680), strikes in $1 increments[/cyan]")
-    console.print("[yellow]Note: Signal based on SPY backtest, but IG.com trades SPX (22pt difference)[/yellow]")
-    console.print()
 
     # Detailed breakdown
     for i, order in enumerate(orders, 1):
         pnl = order["Expected_PnL"]
-        source_ticker = order["Source_Ticker"]
 
         console.print(f"[bold cyan]Order {i}: {order['Display_Ticker']} {order['Option_Type']}[/bold cyan]")
         console.print(f"  Date: {order['Date']}")
@@ -670,103 +734,24 @@ def display_order_summary(orders):
         console.print(f"  Signal: {order['Signal']}")
         console.print()
 
-        # IG.COM DETAILS
         console.print(f"  [bold white]IG.com Order Details:[/bold white]")
-        if source_ticker == "SPY":
-            # IG.com uses US 500 (SPY * 10)
-            ig_ticker = "US 500"
-            ig_strike = order['Strike']  # Already calculated for US 500
-            ig_current = order['Current_Price']
-            ig_limit = order['Limit_Price']
-            console.print(f"    Ticker: [bold]{ig_ticker}[/bold] (SPX - S&P 500 Index)")
-        else:
-            # Other tickers trade directly
-            ig_ticker = source_ticker
-            ig_strike = order['Strike']
-            ig_current = order['Current_Price']
-            ig_limit = order['Limit_Price']
-            console.print(f"    Ticker: [bold]{ig_ticker}[/bold]")
-
+        console.print(f"    Ticker: [bold]{order['Display_Ticker']}[/bold]")
         console.print(f"    Option Type: {order['Option_Type']}")
-        console.print(f"    Strike: {ig_strike} (ATM)")
+        console.print(f"    Strike: {order['Strike']} (ATM)")
         console.print(f"    Expiry: {order['Expiry_Date']} ({order['Days_To_Expiry']}-day)")
-        console.print(f"    Underlying at Entry: {ig_current:.2f}")
+        console.print(f"    Underlying at Entry: {order['Current_Price']:.2f}")
         console.print(f"    Underlying Target: {order['Underlying_Target']:.2f} ({order['Direction']} {abs(order['Target_Move']):.2f} pts)")
         console.print()
         console.print(f"    [bold green]Option Premium Details:[/bold green]")
         console.print(f"    Entry Premium (BUY): {order['Entry_Premium']:.2f} pts")
-        console.print(f"    Target Premium (SELL Limit): {ig_limit:.2f} pts")
+        console.print(f"    Target Premium (SELL Limit): {order['Limit_Price']:.2f} pts")
+        console.print(f"    [bold]Limit Pts: {order['Limit_Pts']:.2f} pts[/bold]")
         console.print(f"    Expected Profit: +{abs(order['Limit_Pts']):.2f} pts ({pnl['realistic_win_pct']:+.1f}%)")
         console.print()
-        console.print(f"    [bold]Action: BUY option at ~{order['Entry_Premium']:.2f} pts, set SELL limit at {ig_limit:.2f} pts[/bold]")
+        console.print(f"    [bold]Action: BUY option at ~{order['Entry_Premium']:.2f} pts, set SELL limit at {order['Limit_Price']:.2f} pts (Limit_Pts = {order['Limit_Pts']:.2f})[/bold]")
         console.print()
 
-        # IBKR DETAILS
-        console.print(f"  [bold white]IBKR (Interactive Brokers) Order Details:[/bold white]")
-        if source_ticker == "SPY":
-            # IBKR uses actual SPY (not SPX/10)
-            ibkr_ticker = "SPY"
-
-            # Use actual SPY values (stored separately)
-            if order['SPY_Actual_Price'] is not None:
-                ibkr_current = order['SPY_Actual_Price']
-                ibkr_strike = order['SPY_Actual_Strike']
-                ibkr_target_move = order['SPY_Actual_ATR'] * 0.1  # Same ATR multiplier
-                ibkr_underlying_target = ibkr_current + ibkr_target_move if "CALL" in order['Option_Type'] else ibkr_current - ibkr_target_move
-
-                # Calculate SPY option premiums
-                T = order['Days_To_Expiry'] / 365.0
-                r = 0.05
-                sigma = 0.15
-
-                if order['Option_Type'] == "CALL":
-                    spy_option = black_scholes_call(ibkr_current, ibkr_strike, T, r, sigma)
-                else:
-                    spy_option = black_scholes_put(ibkr_current, ibkr_strike, T, r, sigma)
-
-                ibkr_entry_premium = spy_option['price']
-                pnl_multiplier = adjustments["pnl_adjustments"][f"{order['Days_To_Expiry']}_day"].get("SPY", 0.5)
-                realistic_win_pct = pnl_multiplier * 45
-                ibkr_limit = ibkr_entry_premium * (1 + realistic_win_pct / 100)
-                ibkr_limit_pts = ibkr_limit - ibkr_entry_premium
-            else:
-                # Fallback to SPX/10 if SPY values not available
-                ibkr_current = order['Current_Price'] / 10
-                ibkr_strike = int(round(order['Current_Price'] / 10))
-                ibkr_underlying_target = order['Underlying_Target'] / 10
-                ibkr_target_move = order['Target_Move'] / 10
-                ibkr_entry_premium = order['Entry_Premium'] / 10
-                ibkr_limit = order['Limit_Price'] / 10
-                ibkr_limit_pts = order['Limit_Pts'] / 10
-
-            console.print(f"    Ticker: [bold]{ibkr_ticker}[/bold]")
-        else:
-            # Other tickers trade directly (same as IG)
-            ibkr_ticker = source_ticker
-            ibkr_strike = order['Strike']
-            ibkr_current = order['Current_Price']
-            ibkr_underlying_target = order['Underlying_Target']
-            ibkr_target_move = order['Target_Move']
-            ibkr_entry_premium = order['Entry_Premium']
-            ibkr_limit = order['Limit_Price']
-            ibkr_limit_pts = order['Limit_Pts']
-            console.print(f"    Ticker: [bold]{ibkr_ticker}[/bold]")
-
-        console.print(f"    Option Type: {order['Option_Type']}")
-        console.print(f"    Strike: {ibkr_strike} (ATM)")
-        console.print(f"    Expiry: {order['Expiry_Date']} ({order['Days_To_Expiry']}-day)")
-        console.print(f"    Underlying at Entry: {ibkr_current:.2f}")
-        console.print(f"    Underlying Target: {ibkr_underlying_target:.2f} ({order['Direction']} {abs(ibkr_target_move):.2f} pts)")
-        console.print()
-        console.print(f"    [bold green]Option Premium Details:[/bold green]")
-        console.print(f"    Entry Premium (BUY): {ibkr_entry_premium:.2f} pts")
-        console.print(f"    Target Premium (SELL Limit): {ibkr_limit:.2f} pts")
-        console.print(f"    Expected Profit: +{abs(ibkr_limit_pts):.2f} pts ({pnl['realistic_win_pct']:+.1f}%)")
-        console.print()
-        console.print(f"    [bold]Action: BUY option at ~{ibkr_entry_premium:.2f} pts, set SELL limit at {ibkr_limit:.2f} pts[/bold]")
-        console.print()
-
-        # P&L EXPECTATIONS (same for both brokers)
+        # P&L EXPECTATIONS
         console.print(f"  [bold white]Expected P&L (with reality adjustments):[/bold white]")
         console.print(f"    Backtest Assumption (WIN): [dim]+{pnl['backtest_win_pct']:.0f}%[/dim]")
         console.print(f"    Realistic Expectation (WIN): [bold green]+{pnl['realistic_win_pct']:.1f}%[/bold green]")
@@ -776,8 +761,6 @@ def display_order_summary(orders):
         console.print(f"    Spread Cost: -{pnl['spread_cost_pct']:.1f}%")
         console.print(f"    Slippage: -{pnl['slippage_pct']:.1f}%")
         console.print(f"    Commission: -{pnl['commission_pct']:.2f}%")
-        console.print()
-        console.print(f"  [bold yellow]NOTE:[/bold yellow] {order['Days_To_Expiry']}-day expiries available on both IG.com and IBKR")
         console.print()
 
 
@@ -924,9 +907,29 @@ def main(force_run=False, tickers=None):
         ))
         return
 
+    # Fetch SPX data from yfinance (for SPY -> US 500 pricing)
+    # This is done ONCE upfront - no SPY/SPX conversions anywhere
     console.print()
     console.print("=" * 80)
-    console.print("[bold white]STEP 3: GENERATE SIGNALS[/bold white]")
+    console.print("[bold white]STEP 3: FETCH SPX (US 500) DATA FROM YFINANCE[/bold white]")
+    console.print("=" * 80)
+    console.print()
+
+    spx_data = None
+    if "SPY" in tickers:
+        spx_data = fetch_spx_data(max_retries=3)  # Aborts if all retries fail
+        console.print(f"  SPX Close: {spx_data['close']:.2f}")
+        console.print(f"  SPX ATR_14: {spx_data['atr']:.2f}")
+        console.print()
+
+    # Fetch VIX-derived implied volatility (replaces hardcoded sigma=0.15)
+    live_iv = fetch_vix_iv(max_retries=3)
+    console.print(f"  [bold]Using IV (from VIX): {live_iv:.4f} ({live_iv*100:.1f}%)[/bold]")
+    console.print()
+
+    console.print()
+    console.print("=" * 80)
+    console.print("[bold white]STEP 4: GENERATE SIGNALS[/bold white]")
     console.print("=" * 80)
     console.print()
 
@@ -936,27 +939,29 @@ def main(force_run=False, tickers=None):
     for ticker in tickers:
         console.print(f"[cyan]Analyzing {ticker}...[/cyan]")
 
-        # Get context
+        # Get context (SPY data used for signal generation only)
         ctx = get_ticker_context(ticker)
 
         if not ctx:
             console.print(f"[red]  X Failed to load context[/red]")
             continue
 
-        # Generate signal
+        # Generate signal (based on SPY direction/magnitude)
         signal, reason = generate_signal(ctx)
 
         console.print(f"  Date: {ctx['Date'].strftime('%Y-%m-%d')}")
-        console.print(f"  Close: ${ctx['Close']:.2f}")
+        console.print(f"  SPY Close: ${ctx['Close']:.2f}")
         console.print(f"  Direction: {ctx['Direction']} ({ctx['Magnitude']:+.2f}%)")
-        console.print(f"  ATR: ${ctx['ATR']:.2f}")
         console.print(f"  Signal: [bold]{signal}[/bold]")
         console.print(f"  Reason: {reason}")
 
         if signal != "NO_TRADE":
-            # Calculate order details with reality adjustments
+            # Calculate order details using SPX data directly (no conversion)
             display_ticker = "US 500" if ticker == "SPY" else ticker
-            order = calculate_order_details(display_ticker, ctx, signal, expiry_date, days_to_expiry, adjustments)
+            order = calculate_order_details(
+                display_ticker, ctx, signal, expiry_date, days_to_expiry,
+                adjustments, spx_data=spx_data, live_iv=live_iv
+            )
             orders.append(order)
 
             # Log to CSV
@@ -968,7 +973,7 @@ def main(force_run=False, tickers=None):
 
     console.print()
     console.print("=" * 80)
-    console.print("[bold white]STEP 4: ORDER SUMMARY[/bold white]")
+    console.print("[bold white]STEP 5: ORDER SUMMARY[/bold white]")
     console.print("=" * 80)
 
     # Display summary
@@ -984,6 +989,8 @@ def main(force_run=False, tickers=None):
     console.print("[bold white]REALITY ADJUSTMENTS APPLIED:[/bold white]")
     console.print("  - P&L expectations include spreads, slippage, theta decay, and commissions")
     console.print("  - Adjustment factors based on Black-Scholes modeling")
+    console.print("  - All pricing computed directly on SPX (US 500) data from yfinance")
+    console.print("  - NO SPY-to-SPX conversions anywhere")
 
     if not adjustments.get("calibration_status", {}).get("is_calibrated", False):
         console.print("  - [yellow]NOT YET CALIBRATED[/yellow]: Start paper trading to refine these estimates")
@@ -991,19 +998,15 @@ def main(force_run=False, tickers=None):
 
     console.print()
     console.print("[yellow]Phase 1: No actual orders placed (dry-run mode)[/yellow]")
-    console.print("[yellow]Next: Phase 2 will add broker API integration (IG.com or IBKR)[/yellow]")
     console.print()
     console.print("[bold white]Trading Days:[/bold white]")
     console.print("  Mon-Thu: Recommended (2-day and 1-day expiries, 78-90% WR)")
     console.print("  Friday: Included for paper trading (3-day expiry, 69% WR, lower performance)")
     console.print()
-    console.print("[cyan]For paper trading workflow: See DAILY_PAPER_TRADING_CHECKLIST.md[/cyan]")
-    console.print()
-    console.print("[bold white]Broker Differences:[/bold white]")
-    console.print("  IG.com: US 500 is SPX (S&P 500 Index), strikes in 5-pt increments")
-    console.print("  IBKR: SPY is S&P 500 ETF, strikes in $1 increments")
-    console.print("  Signal based on SPY backtest, adjusted for SPX on IG.com")
-    console.print("  Both platforms have Mon/Wed/Fri expiries available")
+    console.print("[bold white]Data Sources:[/bold white]")
+    console.print("  Signal: SPY daily data (Polygon.io) - direction/magnitude for fade signal")
+    console.print("  Pricing: SPX (^GSPC) from yfinance - strike, premium, limit_pts for IG.com US 500")
+    console.print("  NO conversions between SPY and SPX")
     console.print()
 
 

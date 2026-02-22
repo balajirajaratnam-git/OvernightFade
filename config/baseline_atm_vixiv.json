@@ -1,0 +1,82 @@
+{
+  "name": "baseline_atm_vixiv",
+  "frozen": "2026-02-08",
+  "description": "Frozen baseline: overnight fade close-to-open, ATM options, VIX-derived IV. Do NOT modify — all future experiments compare against this.",
+
+  "strategy": {
+    "entry_time_et": "16:00",
+    "entry_time_uk": "21:00",
+    "exit_time_et": "09:30",
+    "exit_time_uk": "14:30",
+    "skip_days": ["Friday"],
+    "strike": "ATM",
+    "signal": "fade — buy PUT after GREEN day, buy CALL after RED day",
+    "min_magnitude_pct": 0.10
+  },
+
+  "pricing": {
+    "iv_model": "VIX-derived (yfinance ^VIX / 100)",
+    "risk_free_rate": 0.05,
+    "exit_dt": "09:30 ET next trading day (strategy exit)",
+    "expiry_dt": "16:00 ET on contract settlement date (BS pricing)",
+    "T_entry": "trading time from 16:00 entry to contract expiry 16:00",
+    "T_at_exit": "trading time from 09:30 exit to contract expiry 16:00",
+    "trading_time_model": "390 RTH minutes/day, 252 days/year"
+  },
+
+  "ig_contracts": {
+    "MON": {"expiry_day": "WED", "expiry_label": "MON-WED"},
+    "TUE": {"expiry_day": "WED", "expiry_label": "TUE-WED"},
+    "WED": {"expiry_day": "FRI", "expiry_label": "WED-FRI"},
+    "THU": {"expiry_day": "FRI", "expiry_label": "THU-FRI"}
+  },
+
+  "costs": {
+    "ig_spread_pct": 0.04,
+    "ig_slippage_pct": 0.01,
+    "total_round_trip_pct": 0.05
+  },
+
+  "baseline_results_vix_iv": {
+    "trades": 1674,
+    "win_rate_pct": 46.1,
+    "avg_win_pct": 45.42,
+    "avg_loss_pct": -32.37,
+    "ev_per_trade_pct": 3.46,
+    "median_return_pct": -4.54,
+    "skew": 1.99,
+    "std_dev_pct": 53.79,
+    "worst_losing_streak": 11,
+    "worst_streak_period": "2023-05-30 to 2023-06-21",
+    "cagr_pct_10pct_sizing": 42.3,
+    "max_dd_pct_10pct_sizing": -80.4,
+    "data_period": "2016-02 to 2026-02"
+  },
+
+  "baseline_results_by_direction": {
+    "RED":   {"trades": 770, "win_rate_pct": 52.6, "ev_per_trade_pct": 8.15, "median_pct": 3.49},
+    "GREEN": {"trades": 904, "win_rate_pct": 40.5, "ev_per_trade_pct": -0.53, "median_pct": -10.46}
+  },
+
+  "baseline_results_by_pattern": {
+    "RED_TUE-WED":  {"trades": 208, "win_rate_pct": 60.1, "ev_pct": 14.88},
+    "RED_THU-FRI":  {"trades": 199, "win_rate_pct": 48.7, "ev_pct": 7.78},
+    "RED_MON-WED":  {"trades": 159, "win_rate_pct": 49.7, "ev_pct": 5.26},
+    "RED_WED-FRI":  {"trades": 204, "win_rate_pct": 51.0, "ev_pct": 3.88},
+    "GREEN_TUE-WED":{"trades": 218, "win_rate_pct": 41.7, "ev_pct": 1.75},
+    "GREEN_WED-FRI":{"trades": 240, "win_rate_pct": 40.8, "ev_pct": 0.03},
+    "GREEN_THU-FRI":{"trades": 220, "win_rate_pct": 40.0, "ev_pct": -0.49},
+    "GREEN_MON-WED":{"trades": 226, "win_rate_pct": 39.4, "ev_pct": -3.37}
+  },
+
+  "percentiles": {
+    "P01": -91.0, "P05": -67.3, "P10": -53.4, "P25": -30.0,
+    "P50": -4.5, "P75": 27.3, "P90": 65.8, "P95": 99.9, "P99": 169.3
+  },
+
+  "files": {
+    "backtest_script": "scripts/backtesting/run_backtest_overnight_fade.py",
+    "trade_log": "results/overnight_fade_vix_iv.csv",
+    "baseline_snapshot": "results/baseline_20260208_overnight_fade_vix_iv.csv"
+  }
+}
