@@ -38,7 +38,7 @@ CSV_FIELDS = [
     "underlying_bid", "underlying_ask", "underlying_mid",
     "expiry_pattern", "expiry_date",
     "strike", "option_type", "strike_type",
-    "bid", "ask", "mid", "spread_pts", "spread_pct",
+    "bid", "ask", "mid", "spread_pts", "half_spread_pts", "spread_pct",
 ]
 
 # Strike offsets to sample around ATM (in index points)
@@ -339,6 +339,7 @@ def collect(dry_run: bool = False) -> None:
                     "ask": round(result["ask"], 4),
                     "mid": round(result["mid"], 4),
                     "spread_pts": round(result["spread_pts"], 4),
+                    "half_spread_pts": round(result["spread_pts"] / 2, 4),
                     "spread_pct": round(result["spread_pct"], 2),
                 }
                 rows.append(row)

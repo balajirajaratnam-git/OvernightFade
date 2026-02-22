@@ -292,16 +292,32 @@ class FixedPointCosts:
     @classmethod
     def from_config(cls, config_path: str = "config/config.json") -> 'FixedPointCosts':
         """
-        Load calibrated fixed-point costs from config file.
+        Load calibrated fixed-point costs from a config file.
 
-        Returns default (zero half-spread) if config not calibrated yet.
+        Supports two file schemas:
+
+        1. Standalone file (e.g. config/cost_model_fixed.json) — flat dict:
+               {"half_spread_pts": 0.90, "slippage_pts": 0.03}
+
+        2. Full config.json — nested under cost_model.fixed_point:
+               {"cost_model": {"fixed_point": {"half_spread_pts": 0.90, ...}}}
+
+        Returns default (zero half-spread) if file is missing or not yet calibrated.
         """
         try:
             with open(config_path) as f:
                 cfg = json.load(f)
-            fp = cfg.get("cost_model", {}).get("fixed_point", {})
-            half_spread = fp.get("half_spread_pts")
-            slippage = fp.get("slippage_pts", 0.03)
+
+            # Schema 1: flat standalone file — has half_spread_pts at top level
+            if "half_spread_pts" in cfg:
+                half_spread = cfg.get("half_spread_pts")
+                slippage = cfg.get("slippage_pts", 0.03)
+            else:
+                # Schema 2: nested inside full config.json
+                fp = cfg.get("cost_model", {}).get("fixed_point", {})
+                half_spread = fp.get("half_spread_pts")
+                slippage = fp.get("slippage_pts", 0.03)
+
             if half_spread is None:
                 return cls()  # AWAITING_CALIBRATION
             return cls(half_spread_pts=float(half_spread), slippage_pts=float(slippage))

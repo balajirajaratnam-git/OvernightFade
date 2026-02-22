@@ -186,6 +186,31 @@ class TestFixedPointCosts:
         fp = FixedPointCosts(half_spread_pts=0.10, slippage_pts=0.02)
         assert abs(fp.total_round_trip_pts - 0.24) < 1e-10
 
+    def test_from_config_flat_schema(self, tmp_path):
+        """from_config() reads a flat standalone file {half_spread_pts, slippage_pts}."""
+        import json
+        cfg = tmp_path / "cost_model_fixed.json"
+        cfg.write_text(json.dumps({"half_spread_pts": 0.90, "slippage_pts": 0.03}))
+        fp = FixedPointCosts.from_config(str(cfg))
+        assert fp.half_spread_pts == 0.90
+        assert fp.slippage_pts == 0.03
+
+    def test_from_config_nested_schema(self, tmp_path):
+        """from_config() reads nested cost_model.fixed_point in full config.json."""
+        import json
+        cfg = tmp_path / "config.json"
+        cfg.write_text(json.dumps({
+            "cost_model": {"fixed_point": {"half_spread_pts": 0.45, "slippage_pts": 0.02}}
+        }))
+        fp = FixedPointCosts.from_config(str(cfg))
+        assert fp.half_spread_pts == 0.45
+        assert fp.slippage_pts == 0.02
+
+    def test_from_config_missing_returns_defaults(self, tmp_path):
+        """from_config() returns zero half-spread defaults when file is missing."""
+        fp = FixedPointCosts.from_config(str(tmp_path / "nonexistent.json"))
+        assert fp.half_spread_pts == 0.0  # default, awaiting calibration
+
     def test_fixed_costs_penalise_cheap_premiums_more(self):
         """Fixed-point spread hurts cheap options (OTM) more as % of premium."""
         fp = FixedPointCosts(half_spread_pts=0.10, slippage_pts=0.02)
