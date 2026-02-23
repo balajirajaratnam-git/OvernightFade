@@ -267,9 +267,9 @@ def collect(dry_run: bool = False) -> None:
     # --- Rate limiter (conservative for IG API) ---
     limiter = RateLimiter(
         max_requests_per_run=30,        # We only need ~15 calls per run
-        max_requests_per_minute=10,     # Conservative — IG allows more
+        max_requests_per_minute=30,     # IG allows ~60/min; 30 is conservative
         max_retries=3,
-        max_total_sleep=120,            # 2 min max wait total
+        max_total_sleep=300,            # 5 min max wait total
     )
 
     # --- Connect ---
