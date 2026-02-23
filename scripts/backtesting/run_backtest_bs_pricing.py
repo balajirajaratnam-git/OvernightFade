@@ -136,6 +136,10 @@ def run_bs_backtest(ticker, config, vix_series, adjustments, risk_free_rate=0.04
         if magnitude < 0.10:
             continue
 
+        # Skip Fridays if configured
+        if day_of_week == 4 and config.get('filters', {}).get('exclude_fridays', False):
+            continue
+
         # Determine expiry
         if day_of_week == 0:
             expiry_date = get_next_wednesday(date_t)
@@ -168,6 +172,12 @@ def run_bs_backtest(ticker, config, vix_series, adjustments, risk_free_rate=0.04
         else:
             signal = "FADE_RED"
             option_type = "CALL"
+
+        filters = config.get('filters', {})
+        if signal == "FADE_GREEN" and not filters.get('enable_fade_green', True):
+            continue
+        if signal == "FADE_RED" and not filters.get('enable_fade_red', True):
+            continue
 
         entry_price = day_t['Close']
         atr = day_t['ATR_14']
@@ -343,7 +353,7 @@ def run_bs_backtest(ticker, config, vix_series, adjustments, risk_free_rate=0.04
         # Also record the OLD hardcoded multiplier for comparison
         old_pnl_mult = 0.45 if target_hit else -1.05
 
-        result = "WIN" if target_hit else "LOSS"
+        result = "WIN" if pnl_mult > 0 else "LOSS"
 
         trades.append({
             'Date': date_str,
