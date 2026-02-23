@@ -13,84 +13,27 @@ Usage:
 3. Calculate adjustment factors
 4. Feed back into backtest
 """
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import json
 import math
 
-# Approximation for cumulative normal distribution (no scipy needed)
-def norm_cdf(x):
-    """Cumulative distribution function for standard normal distribution"""
-    return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
+from pricing import black_scholes  # canonical BS implementation
 
-def norm_pdf(x):
-    """Probability density function for standard normal distribution"""
-    return math.exp(-x*x / 2.0) / math.sqrt(2.0 * math.pi)
 
 def black_scholes_call(S, K, T, r, sigma):
-    """
-    Black-Scholes Call Option Pricing
+    """Black-Scholes Call — delegates to src/pricing.py."""
+    return black_scholes(S, K, T, r, sigma, 'CALL')
 
-    S: Current stock price
-    K: Strike price
-    T: Time to expiration (years)
-    r: Risk-free rate
-    sigma: Implied volatility
-    """
-    if T <= 0:
-        return max(S - K, 0)
-
-    d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
-    d2 = d1 - sigma * np.sqrt(T)
-
-    call_price = S * norm_cdf(d1) - K * np.exp(-r * T) * norm_cdf(d2)
-
-    # Greeks
-    delta = norm_cdf(d1)
-    gamma = norm_pdf(d1) / (S * sigma * np.sqrt(T))
-    vega = S * norm_pdf(d1) * np.sqrt(T)
-    theta = -(S * norm_pdf(d1) * sigma) / (2 * np.sqrt(T)) - r * K * np.exp(-r * T) * norm_cdf(d2)
-
-    return {
-        'price': call_price,
-        'delta': delta,
-        'gamma': gamma,
-        'vega': vega / 100,  # Per 1% IV change
-        'theta': theta / 365  # Per day
-    }
 
 def black_scholes_put(S, K, T, r, sigma):
-    """
-    Black-Scholes Put Option Pricing
-
-    S: Current stock price
-    K: Strike price
-    T: Time to expiration (years)
-    r: Risk-free rate
-    sigma: Implied volatility
-    """
-    if T <= 0:
-        return max(K - S, 0)
-
-    d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
-    d2 = d1 - sigma * np.sqrt(T)
-
-    put_price = K * np.exp(-r * T) * norm_cdf(-d2) - S * norm_cdf(-d1)
-
-    # Greeks
-    delta = norm_cdf(d1) - 1
-    gamma = norm_pdf(d1) / (S * sigma * np.sqrt(T))
-    vega = S * norm_pdf(d1) * np.sqrt(T)
-    theta = -(S * norm_pdf(d1) * sigma) / (2 * np.sqrt(T)) + r * K * np.exp(-r * T) * norm_cdf(-d2)
-
-    return {
-        'price': put_price,
-        'delta': delta,
-        'gamma': gamma,
-        'vega': vega / 100,  # Per 1% IV change
-        'theta': theta / 365  # Per day
-    }
+    """Black-Scholes Put — delegates to src/pricing.py."""
+    return black_scholes(S, K, T, r, sigma, 'PUT')
 
 def calculate_option_pnl(
     entry_price,

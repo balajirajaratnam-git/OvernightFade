@@ -44,6 +44,8 @@ from rich.console import Console
 from rich.table import Table
 import pytz
 
+from pricing import black_scholes  # canonical BS implementation
+
 console = Console()
 
 # Timezones
@@ -53,23 +55,12 @@ TZ_UK = pytz.timezone('Europe/London')
 
 
 # ---------------------------------------------------------------------------
-# Black-Scholes
+# Black-Scholes — thin wrapper keeps call sites unchanged
 # ---------------------------------------------------------------------------
 
-def norm_cdf(x):
-    return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
-
 def bs_price(S, K, T, r, sigma, option_type):
-    if T <= 0:
-        return max(S - K, 0.0) if option_type == 'CALL' else max(K - S, 0.0)
-    if sigma <= 0:
-        sigma = 0.001
-    d1 = (math.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * math.sqrt(T))
-    d2 = d1 - sigma * math.sqrt(T)
-    if option_type == 'CALL':
-        return max(S * norm_cdf(d1) - K * math.exp(-r * T) * norm_cdf(d2), 0.0)
-    else:
-        return max(K * math.exp(-r * T) * norm_cdf(-d2) - S * norm_cdf(-d1), 0.0)
+    """Delegates to src/pricing.black_scholes(). option_type: 'CALL' or 'PUT'."""
+    return black_scholes(S, K, T, r, sigma, option_type)['price']
 
 
 # ---------------------------------------------------------------------------

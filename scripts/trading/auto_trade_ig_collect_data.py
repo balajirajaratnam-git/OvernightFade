@@ -17,13 +17,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import yfinance as yf
 import numpy as np
-from scipy.stats import norm
 from rich.console import Console
 from rich.table import Table
 
 # Add src and scripts/trading to path
 sys.path.append(str(Path(__file__).parent.parent.parent / "src"))
 sys.path.append(str(Path(__file__).parent))
+
+from pricing import black_scholes  # canonical BS implementation
 
 # Import from same directory
 try:
@@ -39,19 +40,9 @@ console = Console()
 
 
 def calculate_black_scholes(S, K, T, r, sigma, option_type='call'):
-    """Calculate Black-Scholes option price."""
-    if T <= 0:
-        return max(0, S - K) if option_type == 'call' else max(0, K - S)
-
-    d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
-    d2 = d1 - sigma * np.sqrt(T)
-
-    if option_type == 'call':
-        price = S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
-    else:
-        price = K * np.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
-
-    return price
+    """Calculate Black-Scholes option price. Delegates to src/pricing.py."""
+    opt = 'CALL' if option_type.lower() == 'call' else 'PUT'
+    return black_scholes(S, K, T, r, sigma, opt)['price']
 
 
 def get_spx_price():
