@@ -39,7 +39,7 @@
     "active": "pct",
     "note": "Switch to 'fixed' after spread sampling calibration is complete",
     "percentage": {
-      "ig_spread_pct": 0.04,
+      "ig_spread_pct": 0.03,
       "ig_slippage_pct": 0.01,
       "total_round_trip_pct": 0.05,
       "source": "baseline_atm_vixiv.json (frozen 2026-02-08)"

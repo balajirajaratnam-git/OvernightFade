@@ -1,0 +1,74 @@
+==============================================================================
+IG Spread Calibration Report (v2.0 schema)
+==============================================================================
+Input:  data\ig_spread_samples.csv
+Output: calibration\cost_model_ig.json
+Stat:   median
+Date:   2026-03-01 18:18 UTC
+ENTRY window: 21:00 UK +/- 15 min
+EXIT  window: 14:00 UK +/- 15 min
+
+------------------------------------------------------------------------------
+Sample counts by time_bucket
+------------------------------------------------------------------------------
+  ENTRY   :    72 rows
+  EXIT    :     0 rows
+  OTHER   :    54 rows
+  TOTAL   :   126 rows
+
+------------------------------------------------------------------------------
+Global defaults
+------------------------------------------------------------------------------
+  half_spread_pts: 0.7500
+  slippage_pts:    0.0000
+
+------------------------------------------------------------------------------
+Spreads by expiry_pattern / time_bucket / strike_type (median)
+------------------------------------------------------------------------------
+
+  SPXEMO:
+    ENTRY:
+      ATM         : half_spread=0.7500 pts  n=8
+      ITM_10      : half_spread=0.7500 pts  n=8
+      ITM_25      : half_spread=0.7500 pts  n=2
+      OTM_10      : half_spread=0.7500 pts  n=8
+      OTM_25      : half_spread=0.7500 pts  n=2
+    EXIT: (no samples)
+
+  SPXEOM:
+    ENTRY:
+      ATM         : half_spread=0.7500 pts  n=8
+      ITM_10      : half_spread=0.7500 pts  n=8
+      ITM_25      : half_spread=0.7500 pts  n=1
+      OTM_10      : half_spread=0.7500 pts  n=8
+      OTM_25      : half_spread=0.7500 pts  n=1
+    EXIT: (no samples)
+
+  SPXWED:
+    ENTRY:
+      ATM         : half_spread=0.6000 pts  n=6
+      ITM_10      : half_spread=0.6000 pts  n=6
+      OTM_10      : half_spread=0.6000 pts  n=6
+    EXIT: (no samples)
+
+------------------------------------------------------------------------------
+WARNINGS / FALLBACK NOTES
+------------------------------------------------------------------------------
+  SPXEMO/EXIT: no samples
+  SPXEOM/EXIT: no samples
+  SPXWED/EXIT: no samples
+
+------------------------------------------------------------------------------
+Quick reference: ENTRY half_spread_pts by pattern x strike
+------------------------------------------------------------------------------
+                    SPXEMO      SPXEOM      SPXWED
+  ------------  ----------  ----------  ----------
+  ATM               0.7500      0.7500      0.6000
+  ITM_10            0.7500      0.7500      0.6000
+  ITM_25            0.7500      0.7500         ---
+  OTM_10            0.7500      0.7500      0.6000
+  OTM_25            0.7500      0.7500         ---
+
+==============================================================================
+END OF REPORT
+==============================================================================

@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "provider": "IG_DEMO_QUOTES",
+  "created_utc": "2026-03-01T00:00:00Z",
+  "notes": "Template file. Replace values with measured IG spreads.",
+  "defaults": {
+    "half_spread_pts_entry": 0.10,
+    "half_spread_pts_exit": 0.10,
+    "slippage_pts_entry": 0.00,
+    "slippage_pts_exit": 0.00
+  },
+  "buckets": {
+    "ATM": {
+      "half_spread_pts_entry": 0.10,
+      "half_spread_pts_exit": 0.10
+    },
+    "OTM_0.3": {
+      "half_spread_pts_entry": 0.12,
+      "half_spread_pts_exit": 0.12
+    },
+    "ITM_0.3": {
+      "half_spread_pts_entry": 0.09,
+      "half_spread_pts_exit": 0.09
+    }
+  }
+}

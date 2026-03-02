@@ -1,0 +1,76 @@
+{
+  "version": "2.0",
+  "provider": "IG_SPREAD_SAMPLES",
+  "created_utc": "2026-03-01T18:18:52Z",
+  "notes": "Built from data\\ig_spread_samples.csv (126 TRADEABLE rows). Stat: median. Schema v2.0. Missing time buckets: SPXEMO/EXIT: no samples; SPXEOM/EXIT: no samples; SPXWED/EXIT: no samples.",
+  "global_defaults": {
+    "half_spread_pts": 0.75,
+    "slippage_pts": 0.0
+  },
+  "spreads": {
+    "SPXEMO": {
+      "ENTRY": {
+        "ATM": {
+          "half_spread_pts": 0.75,
+          "n": 8
+        },
+        "ITM_10": {
+          "half_spread_pts": 0.75,
+          "n": 8
+        },
+        "ITM_25": {
+          "half_spread_pts": 0.75,
+          "n": 2
+        },
+        "OTM_10": {
+          "half_spread_pts": 0.75,
+          "n": 8
+        },
+        "OTM_25": {
+          "half_spread_pts": 0.75,
+          "n": 2
+        }
+      }
+    },
+    "SPXEOM": {
+      "ENTRY": {
+        "ATM": {
+          "half_spread_pts": 0.75,
+          "n": 8
+        },
+        "ITM_10": {
+          "half_spread_pts": 0.75,
+          "n": 8
+        },
+        "ITM_25": {
+          "half_spread_pts": 0.75,
+          "n": 1
+        },
+        "OTM_10": {
+          "half_spread_pts": 0.75,
+          "n": 8
+        },
+        "OTM_25": {
+          "half_spread_pts": 0.75,
+          "n": 1
+        }
+      }
+    },
+    "SPXWED": {
+      "ENTRY": {
+        "ATM": {
+          "half_spread_pts": 0.6,
+          "n": 6
+        },
+        "ITM_10": {
+          "half_spread_pts": 0.6,
+          "n": 6
+        },
+        "OTM_10": {
+          "half_spread_pts": 0.6,
+          "n": 6
+        }
+      }
+    }
+  }
+}

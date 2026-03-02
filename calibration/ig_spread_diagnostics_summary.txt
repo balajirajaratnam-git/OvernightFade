@@ -1,0 +1,179 @@
+==============================================================================
+IG Spread Samples — Calibration Diagnostics
+==============================================================================
+Input:         data\ig_spread_samples.csv
+Total rows:    136
+ENTRY window:  21:00 UK +/- 15 min
+EXIT  window:  14:00 UK +/- 15 min
+
+------------------------------------------------------------------------------
+1. ROW COUNTS BY TIME BUCKET
+------------------------------------------------------------------------------
+  ENTRY   :    82
+  EXIT    :     0
+  OTHER   :    54
+  TOTAL   :   136
+
+  ** WARNING: Zero EXIT-window rows. Exit spreads cannot be
+     calibrated independently; ENTRY values were reused. **
+
+------------------------------------------------------------------------------
+2. ENTRY WINDOW ROWS — BREAKDOWN
+------------------------------------------------------------------------------
+  Total ENTRY rows: 82
+
+  By market_status:
+    TRADEABLE      :    72
+    OFFLINE        :    10
+
+  By expiry_pattern:
+    SPXEMO         :    28
+    SPXEOM         :    26
+    SPXWED         :    28
+
+  By option_type:
+    CALL           :    41
+    PUT            :    41
+
+  By strike_type:
+    ATM            :    24
+    ITM_10         :    24
+    ITM_25         :     5
+    OTM_10         :    24
+    OTM_25         :     5
+
+  Cross-tab: strike_type x expiry_pattern (ENTRY only):
+  expiry_pattern  SPXEMO  SPXEOM  SPXWED
+  strike_type                           
+  ATM                  8       8       8
+  ITM_10               8       8       8
+  ITM_25               2       1       2
+  OTM_10               8       8       8
+  OTM_25               2       1       2
+
+  Cross-tab: strike_type x option_type (ENTRY only):
+  option_type  CALL  PUT
+  strike_type           
+  ATM            12   12
+  ITM_10         12   12
+  ITM_25          3    2
+  OTM_10         12   12
+  OTM_25          2    3
+
+------------------------------------------------------------------------------
+3. ATM CALL — ENTRY WINDOW DEEP DIVE
+------------------------------------------------------------------------------
+  ATM CALL ENTRY rows (all):        12
+  ATM CALL ENTRY rows (TRADEABLE):  11
+
+  Summary stats (TRADEABLE ATM CALL ENTRY):
+    bid                 : median= 47.5000  mean= 74.9018  min= 20.2700  max=156.7500
+    ask                 : median= 49.0000  mean= 76.3200  min= 21.4700  max=158.2500
+    mid                 : median= 48.2500  mean= 75.6109  min= 20.8700  max=157.5000
+    spread_pts          : median=  1.5000  mean=  1.4182  min=  1.2000  max=  1.5000
+    half_spread_pts     : median=  0.7500  mean=  0.7091  min=  0.6000  max=  0.7500
+    spread_pct          : median=  2.5300  mean=  2.9536  min=  0.9500  max=  6.6500
+
+  By expiry_pattern (TRADEABLE ATM CALL ENTRY):
+    SPXEMO      : n=  4  median_half_spread=0.7500  median_spread=1.5000  median_mid=40.58
+    SPXEOM      : n=  4  median_half_spread=0.7500  median_spread=1.5000  median_mid=137.19
+    SPXWED      : n=  3  median_half_spread=0.6000  median_spread=1.2000  median_mid=37.76
+
+  Moneyness of ATM strikes (strike vs underlying_mid):
+    median: +0.008%
+    min:    -0.008%
+    max:    +0.053%
+    (Negative = ITM for CALL, Positive = OTM for CALL)
+
+  Top 10 widest spreads (TRADEABLE ATM CALL ENTRY):
+                       timestamp    expiry       bid       ask       mid   spread  half_sp   sp_pct
+    ----------------------------  --------  --------  --------  --------  -------  -------  -------
+         2026-02-23 21:00:05 GMT    SPXEMO     62.13     63.63     62.88     1.50     0.75     2.39
+         2026-02-23 21:00:05 GMT    SPXEOM    156.75    158.25    157.50     1.50     0.75     0.95
+         2026-02-24 21:00:11 GMT    SPXEMO     47.50     49.00     48.25     1.50     0.75     3.11
+         2026-02-24 21:00:11 GMT    SPXEOM    143.42    144.92    144.17     1.50     0.75     1.04
+         2026-02-25 21:02:41 GMT    SPXEMO     32.15     33.65     32.90     1.50     0.75     4.56
+         2026-02-25 21:02:41 GMT    SPXEOM    126.48    127.98    127.23     1.50     0.75     1.18
+         2026-02-26 21:01:20 GMT    SPXEMO     21.79     23.29     22.54     1.50     0.75     6.65
+         2026-02-26 21:01:20 GMT    SPXEOM    129.45    130.95    130.20     1.50     0.75     1.15
+         2026-02-23 21:00:05 GMT    SPXWED     37.16     38.36     37.76     1.20     0.60     3.18
+         2026-02-24 21:00:11 GMT    SPXWED     20.27     21.47     20.87     1.20     0.60     5.75
+
+  Complete listing — ALL TRADEABLE ATM CALL ENTRY rows:
+                       timestamp    expiry   strike     undly       bid       ask       mid   spread  half_sp   moneyness
+    ----------------------------  --------  -------  --------  --------  --------  --------  -------  -------  ----------
+         2026-02-23 21:00:05 GMT    SPXWED     6840   6839.44     37.16     38.36     37.76     1.20     0.60     +0.008%
+         2026-02-23 21:00:05 GMT    SPXEMO     6840   6839.44     62.13     63.63     62.88     1.50     0.75     +0.008%
+         2026-02-23 21:00:05 GMT    SPXEOM     6840   6839.44    156.75    158.25    157.50     1.50     0.75     +0.008%
+         2026-02-24 21:00:11 GMT    SPXWED     6890   6890.53     20.27     21.47     20.87     1.20     0.60     -0.008%
+         2026-02-24 21:00:11 GMT    SPXEMO     6890   6890.53     47.50     49.00     48.25     1.50     0.75     -0.008%
+         2026-02-24 21:00:11 GMT    SPXEOM     6890   6890.53    143.42    144.92    144.17     1.50     0.75     -0.008%
+         2026-02-25 21:02:41 GMT    SPXEMO     6950   6946.34     32.15     33.65     32.90     1.50     0.75     +0.053%
+         2026-02-25 21:02:41 GMT    SPXEOM     6950   6946.34    126.48    127.98    127.23     1.50     0.75     +0.053%
+         2026-02-26 21:01:20 GMT    SPXWED     6910   6907.45     46.82     48.02     47.42     1.20     0.60     +0.037%
+         2026-02-26 21:01:20 GMT    SPXEMO     6910   6907.45     21.79     23.29     22.54     1.50     0.75     +0.037%
+         2026-02-26 21:01:20 GMT    SPXEOM     6910   6907.45    129.45    130.95    130.20     1.50     0.75     +0.037%
+
+------------------------------------------------------------------------------
+4. ATM PUT — ENTRY WINDOW (for comparison)
+------------------------------------------------------------------------------
+  ATM PUT ENTRY rows (TRADEABLE): 11
+    bid                 : median= 45.0300
+    ask                 : median= 46.2300
+    mid                 : median= 45.6300
+    spread_pts          : median=  1.5000
+    half_spread_pts     : median=  0.7500
+
+  By expiry_pattern:
+    SPXEMO      : n=  4  median_half_spread=0.7500
+    SPXEOM      : n=  4  median_half_spread=0.7500
+    SPXWED      : n=  3  median_half_spread=0.6000
+
+------------------------------------------------------------------------------
+5. CALIBRATION DRIVER ANALYSIS
+------------------------------------------------------------------------------
+  All TRADEABLE ATM ENTRY rows: 22
+
+  Distribution of half_spread_pts values:
+    half_spread_pts = 0.6000:   6 rows (27.3%)
+    half_spread_pts = 0.7500:  16 rows (72.7%)
+
+  Overall ATM ENTRY median half_spread_pts: 0.7500
+
+  SPXWED (weekly, nearest expiry): 6 rows -> half_spread = 0.60 pts
+  SPXEMO + SPXEOM (longer-dated):  16 rows -> half_spread = 0.75 pts
+
+  ** The 0.75 median is driven by SPXEMO/SPXEOM outnumbering SPXWED. **
+  ** For the weekly overnight strategy (1-2 DTE), the SPXWED spread
+     of 0.60 pts half-spread (1.20 pts roundtrip) may be more relevant. **
+
+  SPXWED ATM CALL ENTRY stats (weekly options only):
+    n = 3
+    median half_spread_pts = 0.6000
+    median spread_pts      = 1.2000
+    median mid             = 37.76
+    median spread_pct      = 3.18%
+
+------------------------------------------------------------------------------
+6. VERDICT
+------------------------------------------------------------------------------
+
+  Calibrated ATM half_spread (all expiries):  0.7500 pts
+  SPXWED-only ATM half_spread (weekly):        0.6000 pts
+  Roundtrip cost (all expiries):               1.5000 pts
+  Roundtrip cost (SPXWED only):                1.2000 pts
+
+  The calibrated 0.75 half-spread includes SPXEMO and SPXEOM
+  (2-5 DTE and monthly) which have wider IG spreads (1.5 pts)
+  than SPXWED (1.2 pts). For the overnight strategy using
+  weekly options, the SPXWED spread is the more appropriate
+  benchmark.
+
+  Even at the SPXWED rate (1.20 pts roundtrip),
+  the cost is likely too high for the ~+3.8% gross edge
+  (avg premium ~1.6-2.5 pts, so 1.20 RT = 
+  ~60% of a 2.0 pt premium).
+
+==============================================================================
+END OF DIAGNOSTICS
+==============================================================================

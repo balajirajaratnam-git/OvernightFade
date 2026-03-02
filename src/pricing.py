@@ -8,6 +8,7 @@ import from here.
 Modules:
   - Mathematical primitives: _norm_cdf, _norm_pdf
   - Black-Scholes pricing: black_scholes() -> dict with price + Greeks
+  - Time-to-expiry: year_fraction() with 'calendar' and 'rth' basis
   - IV estimation: estimate_iv_from_vix, load_vix_data, get_iv_for_date
   - Transaction cost models: TransactionCosts (percentage), FixedPointCosts (points)
   - Trade P&L: compute_trade_pnl()
@@ -17,12 +18,13 @@ import math
 import os
 import json
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Set
 
 import pandas as pd
 import numpy as np
+import pytz
 
 
 # ---------------------------------------------------------------------------
@@ -114,6 +116,101 @@ def black_scholes(S: float, K: float, T: float, r: float, sigma: float,
 
 
 # ---------------------------------------------------------------------------
+# Time-to-expiry calculation
+# ---------------------------------------------------------------------------
+
+_TZ_ET = pytz.timezone('America/New_York')
+_RTH_MINUTES_PER_DAY = 390       # 09:30 - 16:00 ET
+_RTH_MINUTES_PER_YEAR = 252 * _RTH_MINUTES_PER_DAY  # 98,280
+_SECONDS_PER_YEAR = 365.25 * 24 * 3600
+
+
+def year_fraction(now_dt, future_dt, basis: str,
+                  trading_dates_set: Optional[Set] = None) -> float:
+    """
+    Compute the year-fraction T between two timezone-aware datetimes.
+
+    This is the single source of truth for time-to-expiry in Black-Scholes
+    pricing. All T computations must go through this function.
+
+    Args:
+        now_dt: Current datetime (tz-aware, America/New_York recommended).
+        future_dt: Future datetime, typically expiry at 16:00 ET.
+        basis: 'calendar' or 'rth'.
+            - 'calendar': T = total seconds / seconds-per-year (365.25 days).
+              Includes nights, weekends, holidays — matches how real time
+              passes and how IG prices near-24h instruments.
+            - 'rth': T = RTH trading minutes / (252 * 390).
+              Counts only minutes inside 09:30-16:00 ET on NYSE trading days.
+              Requires trading_dates_set to identify valid trading days.
+        trading_dates_set: Set of pd.Timestamp (tz-naive, normalised) for
+            NYSE trading days. Required when basis='rth', ignored for 'calendar'.
+
+    Returns:
+        float: T in years. Always >= 1e-6 (never zero or negative).
+    """
+    if basis not in ('calendar', 'rth'):
+        raise ValueError(f"basis must be 'calendar' or 'rth', got {basis!r}")
+
+    if basis == 'calendar':
+        # Strip tz for clean subtraction, or use total_seconds on tz-aware
+        delta_seconds = (future_dt - now_dt).total_seconds()
+        T = delta_seconds / _SECONDS_PER_YEAR
+        return max(T, 1e-6)
+
+    # --- RTH basis ---
+    if trading_dates_set is None:
+        raise ValueError("trading_dates_set is required for basis='rth'")
+
+    # Convert to ET if not already
+    if now_dt.tzinfo is not None:
+        now_et = now_dt.astimezone(_TZ_ET)
+    else:
+        now_et = _TZ_ET.localize(now_dt)
+
+    if future_dt.tzinfo is not None:
+        future_et = future_dt.astimezone(_TZ_ET)
+    else:
+        future_et = _TZ_ET.localize(future_dt)
+
+    now_date = now_et.date()
+    future_date = future_et.date()
+
+    rth_open_total = 9 * 60 + 30   # 570 minutes from midnight
+    rth_close_total = 16 * 60       # 960 minutes from midnight
+
+    # Minutes remaining in now_date's RTH session
+    now_minutes_from_midnight = now_et.hour * 60 + now_et.minute
+    if now_minutes_from_midnight < rth_open_total:
+        today_minutes = _RTH_MINUTES_PER_DAY  # full session ahead
+    elif now_minutes_from_midnight >= rth_close_total:
+        today_minutes = 0  # session over
+    else:
+        today_minutes = rth_close_total - now_minutes_from_midnight
+
+    # Full intermediate trading days (strictly between now_date and future_date)
+    full_days = 0
+    check = now_date + timedelta(days=1)
+    while check < future_date:
+        if pd.Timestamp(check) in trading_dates_set:
+            full_days += 1
+        check += timedelta(days=1)
+
+    # Future date's contribution
+    if now_date == future_date:
+        # Same day: just partial session remaining from now
+        total_minutes = today_minutes
+    elif now_date < future_date:
+        # today partial + intermediate full days + expiry day full session
+        total_minutes = today_minutes + full_days * _RTH_MINUTES_PER_DAY + _RTH_MINUTES_PER_DAY
+    else:
+        total_minutes = 0
+
+    T = total_minutes / _RTH_MINUTES_PER_YEAR
+    return max(T, 1e-6)
+
+
+# ---------------------------------------------------------------------------
 # IV estimation
 # ---------------------------------------------------------------------------
 
@@ -172,10 +269,11 @@ def load_vix_data(cache_dir: str = "data") -> Optional[pd.Series]:
 def get_iv_for_date(date, vix_series: Optional[pd.Series],
                     daily_df: Optional[pd.DataFrame] = None) -> float:
     """
-    Get implied volatility for a specific date.
+    Get implied volatility for a specific date — strictly causal (no lookahead).
 
-    Primary:   VIX close / 100 (e.g. VIX 20 → 0.20).
-    Fallback:  20-day realised vol from daily_df (if provided).
+    Primary:   VIX close on or before `date` / 100 (e.g. VIX 20 → 0.20).
+    Fallback:  20-day realised vol from daily_df (if provided), using only
+               data on or before `date`.
     Default:   0.20 if both sources unavailable.
 
     Args:
@@ -188,12 +286,10 @@ def get_iv_for_date(date, vix_series: Optional[pd.Series],
     """
     if vix_series is not None:
         lookup = pd.Timestamp(date).normalize()
-        if lookup in vix_series.index:
-            return float(vix_series.loc[lookup]) / 100.0
-        nearby = vix_series.index[abs(vix_series.index - lookup) <= pd.Timedelta(days=5)]
-        if len(nearby) > 0:
-            closest = nearby[abs(nearby - lookup).argmin()]
-            return float(vix_series.loc[closest]) / 100.0
+        # Strictly causal: only use VIX values on or before the lookup date
+        prior = vix_series.loc[:lookup]
+        if not prior.empty:
+            return float(prior.iloc[-1]) / 100.0
 
     if daily_df is not None:
         loc = daily_df.index.get_indexer([pd.Timestamp(date)], method='ffill')[0]
